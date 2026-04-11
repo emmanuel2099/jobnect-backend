@@ -126,51 +126,70 @@ async def verify_registration(data: dict, db: Session = Depends(get_db)):
 @router.post("/login")
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """User login"""
+    try:
+        print(f"🔐 Login attempt for: {credentials.email}")
+        
+        # Find user by email
+        user = db.query(User).filter(User.email == credentials.email).first()
+        print(f"👤 User found: {user is not None}")
+        print(f"👤 User found: {user is not None}")
     
-    # Find user by email
-    user = db.query(User).filter(User.email == credentials.email).first()
-    
-    if not user or not verify_password(credentials.password, user.password):
+        if not user or not verify_password(credentials.password, user.password):
+            print("❌ Invalid credentials")
+            return {
+                "success": False,
+                "message": "Invalid credentials",
+                "data": {}
+            }
+        
+        if not user.is_active:
+            print("❌ Account inactive")
+            return {
+                "success": False,
+                "message": "Account is inactive",
+                "data": {}
+            }
+        
+        # Update login status
+        print("✅ Updating login status...")
+        user.is_online = True
+        user.last_login = datetime.utcnow()
+        db.commit()
+        
+        # Generate token
+        print("🔑 Generating token...")
+        access_token = create_access_token(
+            data={"sub": user.email, "user_id": user.id}
+        )
+        
+        print("✅ Login successful")
         return {
-            "success": False,
-            "message": "Invalid credentials",
-            "data": {}
-        }
-    
-    if not user.is_active:
-        return {
-            "success": False,
-            "message": "Account is inactive",
-            "data": {}
-        }
-    
-    # Update login status
-    user.is_online = True
-    user.last_login = datetime.utcnow()
-    db.commit()
-    
-    # Generate token
-    access_token = create_access_token(
-        data={"sub": user.email, "user_id": user.id}
-    )
-    
-    return {
-        "success": True,
-        "message": "Login successful",
-        "data": {
-            "token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "phone": user.phone,
-                "company": user.company,
-                "userType": user.user_type,
-                "profilePhoto": user.profile_photo
+            "success": True,
+            "message": "Login successful",
+            "data": {
+                "token": access_token,
+                "token_type": "bearer",
+                "user": {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "company": user.company,
+                    "userType": user.user_type,
+                    "profilePhoto": user.profile_photo
+                }
             }
         }
-    }
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Login failed: {str(e)}",
+            "data": {}
+        }
 
 @router.post("/password-reset-email-verification")
 async def send_password_reset_otp(data: dict, db: Session = Depends(get_db)):
