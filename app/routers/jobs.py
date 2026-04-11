@@ -1,0 +1,417 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import desc, func
+from typing import Optional
+
+from app.database import get_db
+from app.models import Job, Company, JobCategory, City, JobType, JobLevel, User
+from app.schemas import JobCreate, JobUpdate
+from app.auth import get_current_user
+
+router = APIRouter()
+
+@router.get("/jobs/recent")
+async def get_recent_jobs(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
+    """Get recent jobs"""
+    
+    jobs = db.query(Job).filter(Job.is_active == True).order_by(desc(Job.created_at)).limit(limit).all()
+    
+    jobs_data = []
+    for job in jobs:
+        company = db.query(Company).filter(Company.id == job.company_id).first()
+        category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
+        city = db.query(City).filter(City.id == job.city_id).first() if job.city_id else None
+        
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "description": job.description,
+            "requirements": job.requirements,
+            "responsibilities": job.responsibilities,
+            "salary_min": job.salary_min,
+            "salary_max": job.salary_max,
+            "location": job.location,
+            "deadline": str(job.deadline) if job.deadline else None,
+            "vacancies": job.vacancies,
+            "experience_required": job.experience_required,
+            "created_at": str(job.created_at),
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo,
+                "location": company.location
+            } if company else None,
+            "category": {
+                "id": category.id,
+                "name": category.name
+            } if category else None,
+            "city": {
+                "id": city.id,
+                "name": city.name
+            } if city else None
+        })
+    
+    return {
+        "success": True,
+        "message": "Recent jobs retrieved",
+        "data": {"jobs": jobs_data}
+    }
+
+@router.get("/jobs/popular")
+async def get_popular_jobs(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
+    """Get popular jobs (most applied)"""
+    
+    # For now, return recent jobs. In production, track application counts
+    jobs = db.query(Job).filter(Job.is_active == True).order_by(desc(Job.created_at)).limit(limit).all()
+    
+    jobs_data = []
+    for job in jobs:
+        company = db.query(Company).filter(Company.id == job.company_id).first()
+        category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
+        
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "description": job.description,
+            "salary_min": job.salary_min,
+            "salary_max": job.salary_max,
+            "location": job.location,
+            "deadline": str(job.deadline) if job.deadline else None,
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo
+            } if company else None,
+            "category": {
+                "id": category.id,
+                "name": category.name
+            } if category else None
+        })
+    
+    return {
+        "success": True,
+        "message": "Popular jobs retrieved",
+        "data": {"jobs": jobs_data}
+    }
+
+@router.get("/jobs-filter")
+async def filter_jobs(
+    category_id: Optional[int] = None,
+    city_id: Optional[int] = None,
+    job_type_id: Optional[int] = None,
+    job_level_id: Optional[int] = None,
+    keyword: Optional[str] = None,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Filter jobs by various criteria"""
+    
+    query = db.query(Job).filter(Job.is_active == True)
+    
+    if category_id:
+        query = query.filter(Job.category_id == category_id)
+    if city_id:
+        query = query.filter(Job.city_id == city_id)
+    if job_type_id:
+        query = query.filter(Job.job_type_id == job_type_id)
+    if job_level_id:
+        query = query.filter(Job.job_level_id == job_level_id)
+    if keyword:
+        query = query.filter(
+            (Job.title.ilike(f"%{keyword}%")) | 
+            (Job.description.ilike(f"%{keyword}%"))
+        )
+    
+    jobs = query.order_by(desc(Job.created_at)).limit(limit).all()
+    
+    jobs_data = []
+    for job in jobs:
+        company = db.query(Company).filter(Company.id == job.company_id).first()
+        category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
+        
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "description": job.description,
+            "salary_min": job.salary_min,
+            "salary_max": job.salary_max,
+            "location": job.location,
+            "deadline": str(job.deadline) if job.deadline else None,
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo
+            } if company else None,
+            "category": {
+                "id": category.id,
+                "name": category.name
+            } if category else None
+        })
+    
+    return {
+        "success": True,
+        "message": "Filtered jobs retrieved",
+        "data": {"jobs": jobs_data, "total": len(jobs_data)}
+    }
+
+@router.get("/jobs/details/{job_id}")
+async def get_job_details(job_id: int, db: Session = Depends(get_db)):
+    """Get detailed job information"""
+    
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        return {
+            "success": False,
+            "message": "Job not found",
+            "data": {}
+        }
+    
+    company = db.query(Company).filter(Company.id == job.company_id).first()
+    category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
+    city = db.query(City).filter(City.id == job.city_id).first() if job.city_id else None
+    job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
+    job_level = db.query(JobLevel).filter(JobLevel.id == job.job_level_id).first() if job.job_level_id else None
+    
+    return {
+        "success": True,
+        "message": "Job details retrieved",
+        "data": {
+            "job": {
+                "id": job.id,
+                "title": job.title,
+                "description": job.description,
+                "requirements": job.requirements,
+                "responsibilities": job.responsibilities,
+                "salary_min": job.salary_min,
+                "salary_max": job.salary_max,
+                "location": job.location,
+                "deadline": str(job.deadline) if job.deadline else None,
+                "vacancies": job.vacancies,
+                "experience_required": job.experience_required,
+                "is_active": job.is_active,
+                "created_at": str(job.created_at),
+                "company": {
+                    "id": company.id,
+                    "name": company.name,
+                    "logo": company.logo,
+                    "location": company.location,
+                    "description": company.description,
+                    "website": company.website
+                } if company else None,
+                "category": {
+                    "id": category.id,
+                    "name": category.name
+                } if category else None,
+                "city": {
+                    "id": city.id,
+                    "name": city.name
+                } if city else None,
+                "job_type": {
+                    "id": job_type.id,
+                    "name": job_type.name
+                } if job_type else None,
+                "job_level": {
+                    "id": job_level.id,
+                    "name": job_level.name
+                } if job_level else None
+            }
+        }
+    }
+
+@router.get("/job/index")
+async def get_company_jobs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get jobs posted by current company"""
+    
+    # Find company owned by current user
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": True,
+            "message": "No company found",
+            "data": {"jobs": []}
+        }
+    
+    jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
+    
+    jobs_data = [{
+        "id": job.id,
+        "title": job.title,
+        "description": job.description,
+        "salary_min": job.salary_min,
+        "salary_max": job.salary_max,
+        "location": job.location,
+        "deadline": str(job.deadline) if job.deadline else None,
+        "vacancies": job.vacancies,
+        "is_active": job.is_active,
+        "created_at": str(job.created_at)
+    } for job in jobs]
+    
+    return {
+        "success": True,
+        "message": "Jobs retrieved",
+        "data": {"jobs": jobs_data}
+    }
+
+@router.post("/job/store")
+async def create_job(data: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Create a new job posting"""
+    
+    # Verify company ownership
+    company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": False,
+            "message": "Company not found or unauthorized",
+            "data": {}
+        }
+    
+    job = Job(
+        company_id=data.company_id,
+        title=data.title,
+        description=data.description,
+        requirements=data.requirements,
+        responsibilities=data.responsibilities,
+        category_id=data.category_id,
+        job_type_id=data.job_type_id,
+        job_level_id=data.job_level_id,
+        salary_min=data.salary_min,
+        salary_max=data.salary_max,
+        location=data.location,
+        city_id=data.city_id,
+        deadline=data.deadline,
+        vacancies=data.vacancies,
+        experience_required=data.experience_required,
+        is_active=True
+    )
+    
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    
+    return {
+        "success": True,
+        "message": "Job created successfully",
+        "data": {"job_id": job.id}
+    }
+
+@router.get("/job/edit/{job_id}")
+async def get_job_for_edit(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get job details for editing"""
+    
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        return {
+            "success": False,
+            "message": "Job not found",
+            "data": {}
+        }
+    
+    # Verify ownership
+    company = db.query(Company).filter(Company.id == job.company_id, Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": False,
+            "message": "Unauthorized",
+            "data": {}
+        }
+    
+    return {
+        "success": True,
+        "message": "Job details retrieved",
+        "data": {
+            "job": {
+                "id": job.id,
+                "company_id": job.company_id,
+                "title": job.title,
+                "description": job.description,
+                "requirements": job.requirements,
+                "responsibilities": job.responsibilities,
+                "category_id": job.category_id,
+                "job_type_id": job.job_type_id,
+                "job_level_id": job.job_level_id,
+                "salary_min": job.salary_min,
+                "salary_max": job.salary_max,
+                "location": job.location,
+                "city_id": job.city_id,
+                "deadline": str(job.deadline) if job.deadline else None,
+                "vacancies": job.vacancies,
+                "experience_required": job.experience_required,
+                "is_active": job.is_active
+            }
+        }
+    }
+
+@router.post("/job/update")
+async def update_job(data: JobUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update job posting"""
+    
+    job = db.query(Job).filter(Job.id == data.id).first()
+    if not job:
+        return {
+            "success": False,
+            "message": "Job not found",
+            "data": {}
+        }
+    
+    # Verify ownership
+    company = db.query(Company).filter(Company.id == job.company_id, Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": False,
+            "message": "Unauthorized",
+            "data": {}
+        }
+    
+    job.title = data.title
+    job.description = data.description
+    job.requirements = data.requirements
+    job.responsibilities = data.responsibilities
+    job.category_id = data.category_id
+    job.job_type_id = data.job_type_id
+    job.job_level_id = data.job_level_id
+    job.salary_min = data.salary_min
+    job.salary_max = data.salary_max
+    job.location = data.location
+    job.city_id = data.city_id
+    job.deadline = data.deadline
+    job.vacancies = data.vacancies
+    job.experience_required = data.experience_required
+    job.is_active = data.is_active
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Job updated successfully",
+        "data": {}
+    }
+
+@router.delete("/job/delete/{job_id}")
+async def delete_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete job posting"""
+    
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        return {
+            "success": False,
+            "message": "Job not found",
+            "data": {}
+        }
+    
+    # Verify ownership
+    company = db.query(Company).filter(Company.id == job.company_id, Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": False,
+            "message": "Unauthorized",
+            "data": {}
+        }
+    
+    db.delete(job)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Job deleted successfully",
+        "data": {}
+    }

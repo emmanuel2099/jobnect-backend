@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: jobnect-api
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jobnect-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+databases:
+  - name: jobnect-db
+    databaseName: jobnect_db
+    user: jobnect_db_user
+    region: oregon
+    plan: free
