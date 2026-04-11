@@ -225,3 +225,40 @@ class StandardResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None
+
+
+# Job Schemas
+class JobCreate(BaseModel):
+    company_id: int
+    title: str
+    description: Optional[str]
+    requirements: Optional[str]
+    responsibilities: Optional[str]
+    category_id: Optional[int]
+    job_type_id: Optional[int]
+    job_level_id: Optional[int]
+    salary_min: Optional[float]
+    salary_max: Optional[float]
+    location: Optional[str]
+    city_id: Optional[int]
+    deadline: Optional[date]
+    vacancies: Optional[int] = 1
+    experience_required: Optional[str]
+
+class JobUpdate(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    requirements: Optional[str]
+    responsibilities: Optional[str]
+    category_id: Optional[int]
+    job_type_id: Optional[int]
+    job_level_id: Optional[int]
+    salary_min: Optional[float]
+    salary_max: Optional[float]
+    location: Optional[str]
+    city_id: Optional[int]
+    deadline: Optional[date]
+    vacancies: Optional[int]
+    experience_required: Optional[str]
+    is_active: Optional[bool] = True

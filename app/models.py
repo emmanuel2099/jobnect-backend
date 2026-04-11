@@ -13,9 +13,11 @@ class User(Base):
     phone = Column(String(20), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     company = Column(String(255))
-    user_type = Column(String(50), default="applicant")
+    user_type = Column(String(50), default="applicant")  # applicant or company
     profile_photo = Column(Text)
     is_active = Column(Boolean, default=True)
+    is_online = Column(Boolean, default=False)
+    last_login = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

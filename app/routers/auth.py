@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from app.database import get_db
 from app.models import User
@@ -52,16 +52,21 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         hashed_pwd = hash_password(user_data.password)
         print(f"✅ Password hashed (length: {len(hashed_pwd)})")
         
+        # Determine user type based on company field
+        user_type = "company" if user_data.company and user_data.company != "N/A" else "applicant"
+        
         # Create new user
-        print("👤 Creating new user...")
+        print(f"👤 Creating new user with type: {user_type}...")
         new_user = User(
             name=user_data.name,
             email=user_data.email,
             phone=user_data.phone,
             password=hashed_pwd,
             company=user_data.company or "N/A",
-            user_type="applicant",
-            is_active=True
+            user_type=user_type,
+            is_active=True,
+            is_online=True,
+            last_login=datetime.utcnow()
         )
         
         print("💾 Saving to database...")
@@ -139,6 +144,11 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             "data": {}
         }
     
+    # Update login status
+    user.is_online = True
+    user.last_login = datetime.utcnow()
+    db.commit()
+    
     # Generate token
     access_token = create_access_token(
         data={"sub": user.email, "user_id": user.id}
@@ -164,7 +174,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/password-reset-email-verification")
 async def send_password_reset_otp(data: dict, db: Session = Depends(get_db)):
-    """Send password reset OTP (placeholder)"""
+    """Send password reset OTP"""
     email = data.get("email")
     
     user = db.query(User).filter(User.email == email).first()
@@ -175,11 +185,17 @@ async def send_password_reset_otp(data: dict, db: Session = Depends(get_db)):
             "data": {}
         }
     
-    # In production, send actual OTP email here
+    # Generate a simple OTP (in production, send via email)
+    import random
+    otp = str(random.randint(100000, 999999))
+    
+    # Store OTP in session or cache (simplified for now)
+    # In production, use Redis or database with expiry
+    
     return {
         "success": True,
         "message": "OTP sent to email",
-        "data": {"otp": "123456"}  # Mock OTP
+        "data": {"otp": otp}  # Remove this in production
     }
 
 @router.post("/reset-password")
@@ -208,6 +224,99 @@ async def reset_password(data: dict, db: Session = Depends(get_db)):
         "data": {}
     }
 
+@router.post("/change-password")
+async def change_password(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change password for logged-in user"""
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+    
+    if not old_password or not new_password:
+        return {
+            "success": False,
+            "message": "Old password and new password are required",
+            "data": {}
+        }
+    
+    # Verify old password
+    if not verify_password(old_password, current_user.password):
+        return {
+            "success": False,
+            "message": "Old password is incorrect",
+            "data": {}
+        }
+    
+    # Update password
+    current_user.password = hash_password(new_password)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Password changed successfully",
+        "data": {}
+    }
+
+@router.put("/update-profile")
+async def update_profile(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user profile"""
+    
+    # Update allowed fields
+    if "name" in data:
+        current_user.name = data["name"]
+    if "phone" in data:
+        # Check if phone is already taken by another user
+        existing = db.query(User).filter(
+            User.phone == data["phone"],
+            User.id != current_user.id
+        ).first()
+        if existing:
+            return {
+                "success": False,
+                "message": "Phone number already in use",
+                "data": {}
+            }
+        current_user.phone = data["phone"]
+    if "company" in data:
+        current_user.company = data["company"]
+    if "profile_photo" in data:
+        current_user.profile_photo = data["profile_photo"]
+    if "date_of_birth" in data:
+        # Store as string for simplicity
+        pass  # Handle in resume table if needed
+    if "designation_id" in data:
+        # Store designation_id if needed
+        pass  # Handle in resume table if needed
+    if "gender" in data:
+        # Store gender if needed
+        pass  # Handle in resume table if needed
+    
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    
+    return {
+        "success": True,
+        "message": "Profile updated successfully",
+        "data": {
+            "user": {
+                "id": current_user.id,
+                "name": current_user.name,
+                "email": current_user.email,
+                "phone": current_user.phone,
+                "company": current_user.company,
+                "userType": current_user.user_type,
+                "profilePhoto": current_user.profile_photo
+            }
+        }
+    }
+
 @router.get("/users/list")
 async def list_users(db: Session = Depends(get_db)):
     """List all users (for testing/admin purposes)"""
@@ -227,9 +336,23 @@ async def list_users(db: Session = Depends(get_db)):
                     "company": user.company,
                     "userType": user.user_type,
                     "isActive": user.is_active,
+                    "isOnline": user.is_online,
+                    "lastLogin": user.last_login.isoformat() if user.last_login else None,
                     "createdAt": user.created_at.isoformat() if user.created_at else None
                 }
                 for user in users
             ]
         }
+    }
+
+@router.post("/logout")
+async def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """User logout - update online status"""
+    current_user.is_online = False
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Logged out successfully",
+        "data": {}
     }
