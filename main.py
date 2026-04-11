@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
+import os
 
 from app.database import engine, Base, init_db
 from app.routers import auth, profile, jobs, applications, companies, master_data
@@ -54,6 +57,7 @@ async def root():
         "status": "active",
         "framework": "FastAPI",
         "documentation": "/docs",
+        "admin_dashboard": "/admin",
         "endpoints": {
             "auth": "POST /api/v10/registration, POST /api/v10/login",
             "profile": "GET /api/v10/applicant/resume/details",
@@ -63,6 +67,13 @@ async def root():
             "master_data": "GET /api/v10/job-category, GET /api/v10/cities"
         }
     }
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard():
+    """Admin Dashboard - View all users, jobs, applications"""
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "admin.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
