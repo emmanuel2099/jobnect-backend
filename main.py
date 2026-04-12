@@ -13,12 +13,18 @@ from app.routers import auth, profile, jobs, applications, companies, master_dat
 async def lifespan(app: FastAPI):
     # Startup
     print("🔄 Creating database tables...")
-    Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables created")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not create tables: {e}")
     
     print("🔄 Initializing default data...")
-    init_db()
-    print("✅ Default data initialized")
+    try:
+        init_db()
+        print("✅ Default data initialized")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize default data: {e}")
     
     yield
     
