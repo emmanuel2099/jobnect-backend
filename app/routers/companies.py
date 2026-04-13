@@ -10,18 +10,27 @@ from app.auth import get_current_user
 router = APIRouter()
 
 @router.get("/companies")
-async def get_companies(limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
-    """Get all companies"""
+async def get_companies(limit: int = Query(100, ge=1, le=200), db: Session = Depends(get_db)):
+    """Get all companies - includes both Company table entries and users with company type"""
     
-    companies = db.query(Company).filter(Company.is_active == True).order_by(desc(Company.created_at)).limit(limit).all()
+    # Get companies from Company table
+    company_table_entries = db.query(Company).filter(Company.is_active == True).order_by(desc(Company.created_at)).all()
+    
+    # Get users who are companies
+    company_users = db.query(User).filter(
+        User.user_type == "company",
+        User.is_active == True
+    ).order_by(desc(User.created_at)).limit(limit).all()
     
     companies_data = []
-    for company in companies:
-        # Count jobs for this company
+    
+    # Add companies from Company table
+    for company in company_table_entries:
         job_count = db.query(Job).filter(Job.company_id == company.id, Job.is_active == True).count()
         
         companies_data.append({
             "id": company.id,
+            "user_id": company.user_id,
             "name": company.name,
             "logo": company.logo,
             "location": company.location,
@@ -29,8 +38,28 @@ async def get_companies(limit: int = Query(20, ge=1, le=100), db: Session = Depe
             "website": company.website,
             "email": company.email,
             "phone": company.phone,
-            "job_count": job_count
+            "job_count": job_count,
+            "source": "company_table"
         })
+    
+    # Add companies from User table (registered companies)
+    for user in company_users:
+        # Check if this user already has a company entry
+        existing_company = db.query(Company).filter(Company.user_id == user.id).first()
+        if not existing_company:
+            companies_data.append({
+                "id": user.id,
+                "user_id": user.id,
+                "name": user.company or user.name,
+                "logo": user.company_logo or user.profile_photo,
+                "location": None,
+                "description": f"Company registered by {user.name}",
+                "website": None,
+                "email": user.email,
+                "phone": user.phone,
+                "job_count": 0,
+                "source": "user_table"
+            })
     
     return {
         "success": True,

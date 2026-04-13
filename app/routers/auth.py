@@ -55,6 +55,11 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         # Determine user type based on company field
         user_type = "company" if user_data.company and user_data.company != "N/A" else "applicant"
         
+        # Get company logo from request body if provided
+        company_logo = None
+        if hasattr(user_data, 'company_logo') and user_data.company_logo:
+            company_logo = user_data.company_logo
+        
         # Create new user
         print(f"👤 Creating new user with type: {user_type}...")
         new_user = User(
@@ -63,6 +68,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
             phone=user_data.phone,
             password=hashed_pwd,
             company=user_data.company or "N/A",
+            company_logo=company_logo,
             user_type=user_type,
             is_active=True,
             is_online=True,
@@ -94,6 +100,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                     "email": new_user.email,
                     "phone": new_user.phone,
                     "company": new_user.company,
+                    "companyLogo": new_user.company_logo,
                     "userType": new_user.user_type,
                     "profilePhoto": new_user.profile_photo
                 }
@@ -175,6 +182,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
                     "email": user.email,
                     "phone": user.phone,
                     "company": user.company,
+                    "companyLogo": user.company_logo,
                     "userType": user.user_type,
                     "profilePhoto": user.profile_photo
                 }
@@ -306,6 +314,8 @@ async def update_profile(
         current_user.company = data["company"]
     if "profile_photo" in data:
         current_user.profile_photo = data["profile_photo"]
+    if "company_logo" in data:
+        current_user.company_logo = data["company_logo"]
     if "date_of_birth" in data:
         # Store as string for simplicity
         pass  # Handle in resume table if needed
@@ -330,6 +340,7 @@ async def update_profile(
                 "email": current_user.email,
                 "phone": current_user.phone,
                 "company": current_user.company,
+                "companyLogo": current_user.company_logo,
                 "userType": current_user.user_type,
                 "profilePhoto": current_user.profile_photo
             }
@@ -353,6 +364,7 @@ async def list_users(db: Session = Depends(get_db)):
                     "email": user.email,
                     "phone": user.phone,
                     "company": user.company,
+                    "companyLogo": user.company_logo,
                     "userType": user.user_type,
                     "isActive": user.is_active,
                     "isOnline": user.is_online,

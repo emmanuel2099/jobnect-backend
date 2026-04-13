@@ -13,6 +13,7 @@ class User(Base):
     phone = Column(String(20), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     company = Column(String(255))
+    company_logo = Column(Text)  # Company logo URL
     user_type = Column(String(50), default="applicant")  # applicant or company
     profile_photo = Column(Text)
     is_active = Column(Boolean, default=True)
@@ -274,6 +275,7 @@ class Job(Base):
     vacancies = Column(Integer, default=1)
     experience_required = Column(String(100))
     is_active = Column(Boolean, default=True)
+    is_recommended = Column(Boolean, default=False)  # For recommended jobs
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

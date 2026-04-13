@@ -10,6 +10,7 @@ class UserRegister(BaseModel):
     password: str
     password_confirmation: str
     company: Optional[str] = "N/A"
+    company_logo: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -25,6 +26,7 @@ class UserResponse(BaseModel):
     email: str
     phone: str
     company: Optional[str]
+    companyLogo: Optional[str]
     userType: str
     profilePhoto: Optional[str]
     

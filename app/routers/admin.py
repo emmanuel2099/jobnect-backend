@@ -285,3 +285,129 @@ async def get_all_notifications(db: Session = Depends(get_db)):
             ]
         }
     }
+
+
+# Category Management
+@router.get("/categories/manage")
+async def get_categories_for_admin(db: Session = Depends(get_db)):
+    """Get all categories for admin management"""
+    from app.models import JobCategory
+    
+    categories = db.query(JobCategory).order_by(JobCategory.name).all()
+    
+    return {
+        "success": True,
+        "message": f"Found {len(categories)} categories",
+        "data": {
+            "categories": [
+                {
+                    "id": cat.id,
+                    "name": cat.name,
+                    "icon": cat.icon,
+                    "description": cat.description,
+                    "isActive": cat.is_active,
+                    "createdAt": cat.created_at.isoformat() if cat.created_at else None
+                }
+                for cat in categories
+            ]
+        }
+    }
+
+@router.post("/categories/create")
+async def create_category(data: dict, db: Session = Depends(get_db)):
+    """Create a new category"""
+    from app.models import JobCategory
+    
+    category = JobCategory(
+        name=data.get("name"),
+        icon=data.get("icon"),
+        description=data.get("description"),
+        is_active=data.get("is_active", True)
+    )
+    
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    
+    return {
+        "success": True,
+        "message": "Category created successfully",
+        "data": {"category_id": category.id}
+    }
+
+@router.put("/categories/{category_id}")
+async def update_category(category_id: int, data: dict, db: Session = Depends(get_db)):
+    """Update a category"""
+    from app.models import JobCategory
+    
+    category = db.query(JobCategory).filter(JobCategory.id == category_id).first()
+    if not category:
+        return {"success": False, "message": "Category not found", "data": {}}
+    
+    if "name" in data:
+        category.name = data["name"]
+    if "icon" in data:
+        category.icon = data["icon"]
+    if "description" in data:
+        category.description = data["description"]
+    if "is_active" in data:
+        category.is_active = data["is_active"]
+    
+    db.commit()
+    
+    return {"success": True, "message": "Category updated successfully", "data": {}}
+
+@router.delete("/categories/{category_id}")
+async def delete_category(category_id: int, db: Session = Depends(get_db)):
+    """Delete a category"""
+    from app.models import JobCategory
+    
+    category = db.query(JobCategory).filter(JobCategory.id == category_id).first()
+    if not category:
+        return {"success": False, "message": "Category not found", "data": {}}
+    
+    db.delete(category)
+    db.commit()
+    
+    return {"success": True, "message": "Category deleted successfully", "data": {}}
+
+# Recommended Jobs Management
+@router.get("/jobs/recommended/manage")
+async def get_jobs_for_recommended(db: Session = Depends(get_db)):
+    """Get all jobs with recommended status for admin"""
+    jobs = db.query(Job).order_by(desc(Job.created_at)).all()
+    
+    return {
+        "success": True,
+        "message": f"Found {len(jobs)} jobs",
+        "data": {
+            "jobs": [
+                {
+                    "id": job.id,
+                    "title": job.title,
+                    "company_id": job.company_id,
+                    "location": job.location,
+                    "isRecommended": job.is_recommended,
+                    "isActive": job.is_active,
+                    "createdAt": job.created_at.isoformat() if job.created_at else None
+                }
+                for job in jobs
+            ]
+        }
+    }
+
+@router.patch("/jobs/{job_id}/toggle-recommended")
+async def toggle_job_recommended(job_id: int, db: Session = Depends(get_db)):
+    """Toggle recommended status of a job"""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        return {"success": False, "message": "Job not found", "data": {}}
+    
+    job.is_recommended = not job.is_recommended
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Job {'added to' if job.is_recommended else 'removed from'} recommended",
+        "data": {"isRecommended": job.is_recommended}
+    }
