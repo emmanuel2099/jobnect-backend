@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JobNect Admin Dashboard</title>
+    <title>Eagle Pride Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -145,7 +145,7 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="logo">
-            <h1><i class="fas fa-briefcase"></i> JobNect Admin</h1>
+            <h1><i class="fas fa-briefcase"></i> Eagle Pride Admin</h1>
         </div>
         <a href="#" class="nav-item active" onclick="showSection('dashboard')">
             <i class="fas fa-chart-line"></i> Dashboard
@@ -164,6 +164,15 @@
         </a>
         <a href="#" class="nav-item" onclick="showSection('notifications')">
             <i class="fas fa-bell"></i> Notifications
+        </a>
+        <a href="#" class="nav-item" onclick="showSection('chat')">
+            <i class="fas fa-comments"></i> Chat
+        </a>
+        <a href="#" class="nav-item" onclick="showSection('categories')">
+            <i class="fas fa-tags"></i> Categories
+        </a>
+        <a href="#" class="nav-item" onclick="showSection('recommended')">
+            <i class="fas fa-star"></i> Recommended Jobs
         </a>
     </div>
 
@@ -277,6 +286,33 @@
             </div>
             <div id="notificationsTable"></div>
         </div>
+
+        <!-- Chat Section -->
+        <div id="chat" class="section">
+            <div class="section-header">
+                <h3 class="section-title">Chat Conversations</h3>
+            </div>
+            <div id="chatTable"></div>
+        </div>
+
+        <!-- Categories Section -->
+        <div id="categories" class="section">
+            <div class="section-header">
+                <h3 class="section-title">Category Management</h3>
+                <button class="btn btn-primary" onclick="showCategoryModal()">
+                    <i class="fas fa-plus"></i> Add Category
+                </button>
+            </div>
+            <div id="categoriesTable"></div>
+        </div>
+
+        <!-- Recommended Jobs Section -->
+        <div id="recommended" class="section">
+            <div class="section-header">
+                <h3 class="section-title">Recommended Jobs</h3>
+            </div>
+            <div id="recommendedTable"></div>
+        </div>
     </div>
 
     <!-- Notification Modal -->
@@ -314,6 +350,34 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">
                     <i class="fas fa-paper-plane"></i> Send Notification
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="categoryModalTitle">Add Category</h3>
+                <button class="close-btn" onclick="closeCategoryModal()">&times;</button>
+            </div>
+            <form id="categoryForm" onsubmit="saveCategory(event)">
+                <input type="hidden" id="categoryId">
+                <div class="form-group">
+                    <label class="form-label">Category Name</label>
+                    <input type="text" class="form-control" id="categoryName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" class="form-control" id="categoryIcon" placeholder="fa-briefcase">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="categoryDescription"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-save"></i> Save Category
                 </button>
             </form>
         </div>

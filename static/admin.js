@@ -15,7 +15,10 @@ function showSection(section) {
         jobs: 'Job Management',
         companies: 'Company Management',
         applications: 'Application Management',
-        notifications: 'Notifications'
+        notifications: 'Notifications',
+        chat: 'Chat Conversations',
+        categories: 'Category Management',
+        recommended: 'Recommended Jobs'
     };
     document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
 }
@@ -28,7 +31,10 @@ async function loadAllData() {
         loadJobs(),
         loadCompanies(),
         loadApplications(),
-        loadNotifications()
+        loadNotifications(),
+        loadChat(),
+        loadCategories(),
+        loadRecommendedJobs()
     ]);
 }
 
@@ -474,3 +480,271 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAllData();
     setInterval(loadUserStats, 30000); // Refresh stats every 30 seconds
 });
+
+
+// ============ CHAT MANAGEMENT ============
+async function loadChat() {
+    const container = document.getElementById('chatTable');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading conversations...</div>';
+    
+    try {
+        const response = await fetch(`${API}/chat/conversations`);
+        const data = await response.json();
+        
+        if (data.success && data.data.conversations && data.data.conversations.length > 0) {
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User 1</th>
+                            <th>User 2</th>
+                            <th>Last Message</th>
+                            <th>Unread Count</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.conversations.map(conv => `
+                            <tr>
+                                <td>${conv.id}</td>
+                                <td>${conv.user1Name || 'User ' + conv.user1Id}</td>
+                                <td>${conv.user2Name || 'User ' + conv.user2Id}</td>
+                                <td>${conv.lastMessage ? conv.lastMessage.substring(0, 50) + '...' : 'No messages'}</td>
+                                <td><span class="badge badge-info">${conv.unreadCount || 0}</span></td>
+                                <td>${new Date(conv.createdAt).toLocaleDateString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-comments"></i><p>No conversations found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading chat:', error);
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading conversations</p></div>';
+    }
+}
+
+// ============ CATEGORY MANAGEMENT ============
+async function loadCategories() {
+    const container = document.getElementById('categoriesTable');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading categories...</div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/categories/manage`);
+        const data = await response.json();
+        
+        if (data.success && data.data.categories && data.data.categories.length > 0) {
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Icon</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.categories.map(cat => `
+                            <tr>
+                                <td>${cat.id}</td>
+                                <td><strong>${cat.name}</strong></td>
+                                <td><i class="fas ${cat.icon}"></i> ${cat.icon}</td>
+                                <td>${cat.description || 'N/A'}</td>
+                                <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'Active' : 'Inactive'}</span></td>
+                                <td>${new Date(cat.createdAt).toLocaleDateString()}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-tags"></i><p>No categories found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading categories</p></div>';
+    }
+}
+
+function showCategoryModal() {
+    document.getElementById('categoryModalTitle').textContent = 'Add Category';
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryModal').classList.add('active');
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').classList.remove('active');
+    document.getElementById('categoryForm').reset();
+}
+
+async function editCategory(id) {
+    try {
+        const response = await fetch(`${API}/admin/categories/manage`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const category = data.data.categories.find(c => c.id === id);
+            if (category) {
+                document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+                document.getElementById('categoryId').value = category.id;
+                document.getElementById('categoryName').value = category.name;
+                document.getElementById('categoryIcon').value = category.icon || '';
+                document.getElementById('categoryDescription').value = category.description || '';
+                document.getElementById('categoryModal').classList.add('active');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading category:', error);
+        alert('Error loading category');
+    }
+}
+
+async function saveCategory(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('categoryId').value;
+    const name = document.getElementById('categoryName').value;
+    const icon = document.getElementById('categoryIcon').value;
+    const description = document.getElementById('categoryDescription').value;
+    
+    const categoryData = {
+        name: name,
+        icon: icon,
+        description: description,
+        is_active: true
+    };
+    
+    try {
+        let response;
+        if (id) {
+            // Update existing category
+            response = await fetch(`${API}/admin/categories/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoryData)
+            });
+        } else {
+            // Create new category
+            response = await fetch(`${API}/admin/categories/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoryData)
+            });
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(id ? 'Category updated successfully' : 'Category created successfully');
+            closeCategoryModal();
+            loadCategories();
+        } else {
+            alert('Failed to save category');
+        }
+    } catch (error) {
+        console.error('Error saving category:', error);
+        alert('Error saving category');
+    }
+}
+
+async function deleteCategory(id) {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    
+    try {
+        const response = await fetch(`${API}/admin/categories/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Category deleted successfully');
+            loadCategories();
+        } else {
+            alert('Failed to delete category');
+        }
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Error deleting category');
+    }
+}
+
+// ============ RECOMMENDED JOBS MANAGEMENT ============
+async function loadRecommendedJobs() {
+    const container = document.getElementById('recommendedTable');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading jobs...</div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/jobs/recommended/manage`);
+        const data = await response.json();
+        
+        if (data.success && data.data.jobs && data.data.jobs.length > 0) {
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Recommended</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.jobs.map(job => `
+                            <tr>
+                                <td>${job.id}</td>
+                                <td><strong>${job.title}</strong></td>
+                                <td>${job.location || 'N/A'}</td>
+                                <td><span class="badge ${job.isActive ? 'badge-success' : 'badge-danger'}">${job.isActive ? 'Active' : 'Closed'}</span></td>
+                                <td><span class="badge ${job.isRecommended ? 'badge-success' : 'badge-warning'}">${job.isRecommended ? 'Yes' : 'No'}</span></td>
+                                <td>${new Date(job.createdAt).toLocaleDateString()}</td>
+                                <td>
+                                    <button class="btn btn-sm ${job.isRecommended ? 'btn-warning' : 'btn-success'}" onclick="toggleRecommended(${job.id})">
+                                        <i class="fas fa-star"></i> ${job.isRecommended ? 'Remove' : 'Add'}
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-briefcase"></i><p>No jobs found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading recommended jobs:', error);
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading jobs</p></div>';
+    }
+}
+
+async function toggleRecommended(id) {
+    try {
+        const response = await fetch(`${API}/admin/jobs/${id}/toggle-recommended`, { method: 'PATCH' });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadRecommendedJobs();
+        } else {
+            alert('Failed to toggle recommended status');
+        }
+    } catch (error) {
+        console.error('Error toggling recommended:', error);
+        alert('Error toggling recommended status');
+    }
+}
