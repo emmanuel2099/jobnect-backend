@@ -42,7 +42,7 @@ async def upload_profile_photo(
         f.write(file_content)
     
     # Update user profile photo URL
-    photo_url = f"/static/uploads/{unique_filename}"
+    photo_url = f"https://jobnect-backend.onrender.com/static/uploads/{unique_filename}"
     current_user.profile_photo = photo_url
     db.commit()
     
@@ -81,7 +81,7 @@ async def upload_image(
         f.write(file_content)
     
     # Return URL
-    image_url = f"/static/uploads/{unique_filename}"
+    image_url = f"https://jobnect-backend.onrender.com/static/uploads/{unique_filename}"
     
     return {
         "success": True,
