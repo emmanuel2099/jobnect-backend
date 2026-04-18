@@ -58,6 +58,8 @@ class AddressInfoUpdate(BaseModel):
     permanent_address: Optional[str]
 
 class CareerInfoUpdate(BaseModel):
+    designation: Optional[str]
+    city: Optional[str]
     objective: Optional[str]
     present_salary: Optional[str]
     expected_salary: Optional[str]
@@ -264,3 +266,7 @@ class JobUpdate(BaseModel):
     vacancies: Optional[int]
     experience_required: Optional[str]
     is_active: Optional[bool] = True
+
+# Skills Schema
+class SkillsUpdate(BaseModel):
+    skills: List[str]

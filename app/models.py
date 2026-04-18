@@ -52,11 +52,16 @@ class Resume(Base):
     permanent_address = Column(Text)
     
     # Career Info
+    designation = Column(String(255))  # Job title/bio
+    city = Column(String(255))  # City/location
     objective = Column(Text)
     present_salary = Column(String(100))
     expected_salary = Column(String(100))
     job_level = Column(String(100))
     job_nature = Column(String(100))
+    
+    # Skills (stored as JSON array)
+    skills = Column(Text)  # JSON array of skill names
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

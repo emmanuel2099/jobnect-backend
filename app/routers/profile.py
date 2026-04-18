@@ -8,7 +8,7 @@ from app.schemas import (
     ProfileUpdate, ImageUpdate, PersonalInfoUpdate, AddressInfoUpdate, CareerInfoUpdate,
     ExperienceCreate, ExperienceUpdate, EducationCreate, EducationUpdate,
     TrainingCreate, TrainingUpdate, LanguageCreate, LanguageUpdate,
-    ReferenceCreate, ReferenceUpdate
+    ReferenceCreate, ReferenceUpdate, SkillsUpdate
 )
 from app.auth import get_current_user
 
@@ -33,6 +33,15 @@ async def get_resume_details(current_user: User = Depends(get_current_user), db:
     languages = db.query(Language).filter(Language.resume_id == resume.id).all()
     references = db.query(Reference).filter(Reference.resume_id == resume.id).all()
     
+    # Parse skills from JSON
+    import json
+    skills = []
+    if resume.skills:
+        try:
+            skills = json.loads(resume.skills)
+        except:
+            skills = []
+    
     return {
         "success": True,
         "message": "Resume details retrieved",
@@ -47,6 +56,8 @@ async def get_resume_details(current_user: User = Depends(get_current_user), db:
             },
             "resume": {
                 "id": resume.id,
+                "designation": resume.designation,
+                "city": resume.city,
                 "father_name": resume.father_name,
                 "mother_name": resume.mother_name,
                 "date_of_birth": str(resume.date_of_birth) if resume.date_of_birth else None,
@@ -61,7 +72,8 @@ async def get_resume_details(current_user: User = Depends(get_current_user), db:
                 "present_salary": resume.present_salary,
                 "expected_salary": resume.expected_salary,
                 "job_level": resume.job_level,
-                "job_nature": resume.job_nature
+                "job_nature": resume.job_nature,
+                "skills": skills
             },
             "experiences": [
                 {
@@ -217,6 +229,8 @@ async def update_career_info(data: CareerInfoUpdate, current_user: User = Depend
         resume = Resume(user_id=current_user.id)
         db.add(resume)
     
+    if data.designation: resume.designation = data.designation
+    if data.city: resume.city = data.city
     if data.objective: resume.objective = data.objective
     if data.present_salary: resume.present_salary = data.present_salary
     if data.expected_salary: resume.expected_salary = data.expected_salary
@@ -608,4 +622,27 @@ async def delete_reference(ref_id: int, current_user: User = Depends(get_current
         "success": True,
         "message": "Reference deleted",
         "data": {}
+    }
+
+# Skills endpoint
+@router.post("/resume/skills/update")
+async def update_skills(data: SkillsUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update resume skills"""
+    import json
+    
+    resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
+    if not resume:
+        resume = Resume(user_id=current_user.id)
+        db.add(resume)
+        db.commit()
+        db.refresh(resume)
+    
+    # Store skills as JSON array
+    resume.skills = json.dumps(data.skills)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Skills updated successfully",
+        "data": {"skills": data.skills}
     }

@@ -411,3 +411,140 @@ async def toggle_job_recommended(job_id: int, db: Session = Depends(get_db)):
         "message": f"Job {'added to' if job.is_recommended else 'removed from'} recommended",
         "data": {"isRecommended": job.is_recommended}
     }
+
+
+# User Profile Details for Admin
+@router.get("/users/{user_id}/profile")
+async def get_user_profile_details(user_id: int, db: Session = Depends(get_db)):
+    """Get complete user profile details including resume, skills, bio, etc."""
+    from app.models import Resume, Experience, Education
+    import json
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"success": False, "message": "User not found", "data": {}}
+    
+    resume = db.query(Resume).filter(Resume.user_id == user_id).first()
+    
+    # Parse skills from JSON
+    skills = []
+    if resume and resume.skills:
+        try:
+            skills = json.loads(resume.skills)
+        except:
+            skills = []
+    
+    # Get experiences
+    experiences = []
+    if resume:
+        experiences = db.query(Experience).filter(Experience.resume_id == resume.id).all()
+    
+    # Get educations
+    educations = []
+    if resume:
+        educations = db.query(Education).filter(Education.resume_id == resume.id).all()
+    
+    return {
+        "success": True,
+        "message": "User profile retrieved",
+        "data": {
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "company": user.company,
+                "userType": user.user_type,
+                "profilePhoto": user.profile_photo,
+                "isActive": user.is_active,
+                "isOnline": user.is_online,
+                "lastLogin": user.last_login.isoformat() if user.last_login else None,
+                "createdAt": user.created_at.isoformat() if user.created_at else None
+            },
+            "resume": {
+                "designation": resume.designation if resume else None,
+                "city": resume.city if resume else None,
+                "bio": resume.objective if resume else None,
+                "skills": skills,
+                "dateOfBirth": str(resume.date_of_birth) if resume and resume.date_of_birth else None,
+                "gender": resume.gender if resume else None,
+                "presentAddress": resume.present_address if resume else None,
+                "presentSalary": resume.present_salary if resume else None,
+                "expectedSalary": resume.expected_salary if resume else None,
+                "jobLevel": resume.job_level if resume else None,
+                "jobNature": resume.job_nature if resume else None
+            } if resume else None,
+            "experiences": [
+                {
+                    "id": exp.id,
+                    "employer": exp.employer,
+                    "designation": exp.designation,
+                    "department": exp.department,
+                    "startDate": str(exp.start_date),
+                    "endDate": str(exp.end_date) if exp.end_date else None
+                }
+                for exp in experiences
+            ],
+            "educations": [
+                {
+                    "id": edu.id,
+                    "institution": edu.institution,
+                    "degree": edu.degree,
+                    "level": edu.level,
+                    "passingYear": edu.passing_year
+                }
+                for edu in educations
+            ]
+        }
+    }
+
+@router.get("/users/profiles/all")
+async def get_all_user_profiles(
+    user_type: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all user profiles with basic info for admin dashboard"""
+    from app.models import Resume
+    import json
+    
+    query = db.query(User)
+    if user_type:
+        query = query.filter(User.user_type == user_type)
+    
+    users = query.order_by(desc(User.created_at)).all()
+    
+    profiles = []
+    for user in users:
+        resume = db.query(Resume).filter(Resume.user_id == user.id).first()
+        
+        # Parse skills
+        skills = []
+        if resume and resume.skills:
+            try:
+                skills = json.loads(resume.skills)
+            except:
+                skills = []
+        
+        profiles.append({
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "userType": user.user_type,
+            "profilePhoto": user.profile_photo,
+            "designation": resume.designation if resume else None,
+            "city": resume.city if resume else None,
+            "skills": skills,
+            "skillsCount": len(skills),
+            "isActive": user.is_active,
+            "createdAt": user.created_at.isoformat() if user.created_at else None
+        })
+    
+    return {
+        "success": True,
+        "message": f"Found {len(profiles)} user profiles",
+        "data": {
+            "total": len(profiles),
+            "profiles": profiles
+        }
+    }

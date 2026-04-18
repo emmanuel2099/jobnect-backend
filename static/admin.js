@@ -3,24 +3,46 @@ let currentFilter = 'all';
 
 // Show/Hide Sections
 function showSection(section) {
+    // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(section).classList.add('active');
     
+    // Show selected section
+    const targetSection = document.getElementById(section);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    // Update nav items
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     event.target.closest('.nav-item').classList.add('active');
     
-    const titles = {
-        dashboard: 'Dashboard',
-        users: 'User Management',
-        jobs: 'Job Management',
-        companies: 'Company Management',
-        applications: 'Application Management',
-        notifications: 'Notifications',
-        chat: 'Chat Conversations',
-        categories: 'Category Management',
-        recommended: 'Recommended Jobs'
-    };
-    document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
+    // Load data for the section
+    switch(section) {
+        case 'users':
+            loadUsers();
+            break;
+        case 'jobs':
+            loadJobs();
+            break;
+        case 'companies':
+            loadCompanies();
+            break;
+        case 'applications':
+            loadApplications();
+            break;
+        case 'notifications':
+            loadNotifications();
+            break;
+        case 'chat':
+            loadChat();
+            break;
+        case 'categories':
+            loadCategories();
+            break;
+        case 'recommended':
+            loadRecommendedJobs();
+            break;
+    }
 }
 
 // Load All Data
@@ -59,15 +81,19 @@ async function loadUserStats() {
 // Filter Users
 function filterUsers(type) {
     currentFilter = type;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Update button states
+    const buttons = document.querySelectorAll('.filter-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
+    
     loadUsers();
 }
 
 // Load Users
 async function loadUsers() {
     const container = document.getElementById('usersTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading users...</div>';
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading users...</p></div>';
     
     try {
         let url = `${API}/admin/users`;
@@ -102,17 +128,17 @@ async function loadUsers() {
                                 <td>${user.id}</td>
                                 <td><strong>${user.name}</strong></td>
                                 <td>${user.email}</td>
-                                <td>${user.phone}</td>
+                                <td>${user.phone || 'N/A'}</td>
                                 <td><span class="badge ${user.userType === 'company' ? 'badge-info' : 'badge-warning'}">${user.userType}</span></td>
                                 <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
                                 <td><span class="badge ${user.isOnline ? 'badge-online' : 'badge-offline'}">${user.isOnline ? 'Online' : 'Offline'}</span></td>
                                 <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${user.id})">
-                                        <i class="fas fa-toggle-on"></i>
+                                    <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${user.id})" title="Toggle Status">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">toggle_on</span>
                                     </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">
-                                        <i class="fas fa-trash"></i>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})" title="Delete User">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
                                     </button>
                                 </td>
                             </tr>
@@ -121,11 +147,11 @@ async function loadUsers() {
                 </table>
             `;
         } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No users found</p></div>';
+            container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">group</span><p>No users found</p></div>';
         }
     } catch (error) {
         console.error('Error loading users:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading users</p></div>';
+        container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">error</span><p>Error loading users</p></div>';
     }
 }
 
