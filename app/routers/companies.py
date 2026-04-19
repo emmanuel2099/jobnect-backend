@@ -383,3 +383,67 @@ async def get_kyc_status(current_user: User = Depends(get_current_user), db: Ses
             "submitted_at": str(kyc.created_at)
         }
     }
+
+@router.get("/company/profile")
+async def get_company_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get company profile for logged-in company user"""
+    
+    # Find company owned by current user
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    
+    if not company:
+        # If no Company record exists, return user data as fallback
+        if current_user.user_type == "company":
+            return {
+                "success": True,
+                "message": "Company profile retrieved from user data",
+                "data": {
+                    "company": {
+                        "id": current_user.id,
+                        "name": current_user.company or current_user.name,
+                        "logo": current_user.company_logo or current_user.profile_photo,
+                        "location": None,
+                        "description": f"Company profile for {current_user.company or current_user.name}",
+                        "website": None,
+                        "email": current_user.email,
+                        "phone": current_user.phone,
+                        "founded_year": None,
+                        "company_size": None,
+                        "industry": None,
+                        "is_featured": False,
+                        "job_count": 0,
+                        "created_at": str(current_user.created_at) if current_user.created_at else None
+                    }
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Company profile not found",
+                "data": {}
+            }
+    
+    job_count = db.query(Job).filter(Job.company_id == company.id, Job.is_active == True).count()
+    
+    return {
+        "success": True,
+        "message": "Company profile retrieved",
+        "data": {
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo,
+                "location": company.location,
+                "description": company.description,
+                "website": company.website,
+                "email": company.email,
+                "phone": company.phone,
+                "founded_year": company.founded_year,
+                "company_size": company.company_size,
+                "industry": company.industry,
+                "is_featured": company.is_featured,
+                "job_count": job_count,
+                "created_at": str(company.created_at)
+            }
+        }
+    }

@@ -177,3 +177,124 @@ async def bookmark_job(data: BookmarkCreate, current_user: User = Depends(get_cu
             "message": "Job bookmarked",
             "data": {"bookmarked": True}
         }
+
+@router.get("/company/applications/recent")
+async def get_company_recent_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get recent applications for company's jobs"""
+    
+    # Find company owned by current user
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    if not company:
+        return {
+            "success": True,
+            "message": "No company found",
+            "data": {"applications": []}
+        }
+    
+    # Get all jobs for this company
+    company_jobs = db.query(Job).filter(Job.company_id == company.id).all()
+    job_ids = [job.id for job in company_jobs]
+    
+    # Get recent applications for these jobs
+    applications = db.query(JobApplication).filter(
+        JobApplication.job_id.in_(job_ids)
+    ).order_by(desc(JobApplication.created_at)).limit(10).all()
+    
+    applications_data = []
+    for app in applications:
+        job = db.query(Job).filter(Job.id == app.job_id).first()
+        applicant = db.query(User).filter(User.id == app.user_id).first()
+        
+        if job and applicant:
+            applications_data.append({
+                "id": app.id,
+                "status": app.status,
+                "cover_letter": app.cover_letter,
+                "resume_file": app.resume_file,
+                "created_at": str(app.created_at),
+                "applicant": {
+                    "id": applicant.id,
+                    "name": applicant.name,
+                    "email": applicant.email,
+                    "phone": applicant.phone,
+                    "profile_picture": applicant.profile_picture
+                },
+                "job": {
+                    "id": job.id,
+                    "title": job.title,
+                    "location": job.location
+                }
+            })
+    
+    return {
+        "success": True,
+        "message": "Recent applications retrieved",
+        "data": {"applications": applications_data}
+    }
+
+@router.get("/company/applications/by-job")
+async def get_company_applications_by_job(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get applications grouped by job for company"""
+    
+    # Find company owned by current user
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    
+    # If no company record exists, check if user is a company type and get jobs directly
+    if not company:
+        # Check if user is company type
+        if current_user.user_type != "company":
+            return {
+                "success": True,
+                "message": "User is not a company",
+                "data": {"jobs": []}
+            }
+        
+        # For company users without a Company record, return empty for now
+        # In production, you might want to auto-create a Company record here
+        return {
+            "success": True,
+            "message": "No company profile found. Please complete your company profile.",
+            "data": {"jobs": []}
+        }
+    
+    # Get all jobs for this company
+    jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
+    
+    jobs_data = []
+    for job in jobs:
+        # Get applications for this job
+        applications = db.query(JobApplication).filter(
+            JobApplication.job_id == job.id
+        ).order_by(desc(JobApplication.created_at)).all()
+        
+        applications_list = []
+        for app in applications:
+            applicant = db.query(User).filter(User.id == app.user_id).first()
+            if applicant:
+                applications_list.append({
+                    "id": app.id,
+                    "status": app.status,
+                    "created_at": str(app.created_at),
+                    "applicant": {
+                        "id": applicant.id,
+                        "name": applicant.name,
+                        "email": applicant.email,
+                        "phone": applicant.phone,
+                        "profile_picture": applicant.profile_picture
+                    }
+                })
+        
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "is_active": job.is_active,
+            "applications_count": len(applications_list),
+            "applications": applications_list
+        })
+    
+    return {
+        "success": True,
+        "message": "Applications by job retrieved",
+        "data": {"jobs": jobs_data}
+    }
