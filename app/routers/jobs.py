@@ -256,62 +256,87 @@ async def get_company_jobs(current_user: User = Depends(get_current_user), db: S
 async def create_job(data: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new job posting"""
     
-    # Check if company record exists
-    company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
-    
-    # If no company record exists, create one automatically for company users
-    if not company:
-        if current_user.user_type == "company":
-            # Auto-create company record from user data
-            company = Company(
-                user_id=current_user.id,
-                name=current_user.company or current_user.name,
-                email=current_user.email,
-                phone=current_user.phone,
-                logo=current_user.company_logo or current_user.profile_photo,
-                is_active=True
-            )
-            db.add(company)
-            db.commit()
-            db.refresh(company)
-            
-            # Update the company_id in the request data
-            data.company_id = company.id
-        else:
-            return {
-                "success": False,
-                "message": "Company not found or unauthorized",
-                "data": {}
-            }
-    
-    job = Job(
-        company_id=company.id,
-        title=data.title,
-        description=data.description,
-        requirements=data.requirements,
-        responsibilities=data.responsibilities,
-        category_id=data.category_id,
-        job_type_id=data.job_type_id,
-        job_level_id=data.job_level_id,
-        salary_min=data.salary_min,
-        salary_max=data.salary_max,
-        location=data.location,
-        city_id=data.city_id,
-        deadline=data.deadline,
-        vacancies=data.vacancies,
-        experience_required=data.experience_required,
-        is_active=True
-    )
-    
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-    
-    return {
-        "success": True,
-        "message": "Job created successfully",
-        "data": {"job_id": job.id}
-    }
+    try:
+        # Check if company record exists
+        company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
+        
+        # If no company record exists, create one automatically for company users
+        if not company:
+            if current_user.user_type == "company":
+                # Auto-create company record from user data
+                company = Company(
+                    user_id=current_user.id,
+                    name=current_user.company or current_user.name,
+                    email=current_user.email,
+                    phone=current_user.phone,
+                    logo=current_user.company_logo or current_user.profile_photo,
+                    is_active=True
+                )
+                db.add(company)
+                db.commit()
+                db.refresh(company)
+                
+                # Update the company_id in the request data
+                data.company_id = company.id
+            else:
+                return {
+                    "success": False,
+                    "message": "Company not found or unauthorized",
+                    "data": {}
+                }
+        
+        # Parse deadline string to date
+        deadline_date = None
+        if data.deadline:
+            from datetime import datetime
+            try:
+                # Try parsing YYYY-MM-DD format
+                deadline_date = datetime.strptime(data.deadline, "%Y-%m-%d").date()
+            except ValueError:
+                try:
+                    # Try parsing YYYY-M-D format (without leading zeros)
+                    parts = data.deadline.split('-')
+                    if len(parts) == 3:
+                        year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+                        deadline_date = datetime(year, month, day).date()
+                except:
+                    pass
+        
+        job = Job(
+            company_id=company.id,
+            title=data.title,
+            description=data.description,
+            requirements=data.requirements,
+            responsibilities=data.responsibilities,
+            category_id=data.category_id,
+            job_type_id=data.job_type_id,
+            job_level_id=data.job_level_id,
+            salary_min=data.salary_min,
+            salary_max=data.salary_max,
+            location=data.location,
+            city_id=data.city_id,
+            deadline=deadline_date,
+            vacancies=data.vacancies,
+            experience_required=data.experience_required,
+            is_active=True
+        )
+        
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        
+        return {
+            "success": True,
+            "message": "Job created successfully",
+            "data": {"job_id": job.id}
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Failed to create job: {str(e)}",
+            "data": {}
+        }
 
 @router.get("/job/edit/{job_id}")
 async def get_job_for_edit(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

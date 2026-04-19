@@ -174,7 +174,7 @@ class JobCreate(BaseModel):
     salary_max: Optional[float]
     location: Optional[str]
     city_id: Optional[int]
-    deadline: Optional[date]
+    deadline: Optional[str]  # Accept string and convert to date
     vacancies: int = 1
     experience_required: Optional[str]
 
