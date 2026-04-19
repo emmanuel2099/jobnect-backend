@@ -14,14 +14,19 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
     """Apply for a job"""
     
     try:
+        print(f"📝 Job application request - User: {current_user.id}, Job: {data.job_id}")
+        
         # Check if job exists
         job = db.query(Job).filter(Job.id == data.job_id).first()
         if not job:
+            print(f"❌ Job {data.job_id} not found")
             return {
                 "success": False,
                 "message": "Job not found",
                 "data": {}
             }
+        
+        print(f"✅ Job found: {job.title}")
         
         # Check if already applied
         existing_application = db.query(JobApplication).filter(
@@ -30,11 +35,14 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
         ).first()
         
         if existing_application:
+            print(f"⚠️  User {current_user.id} already applied to job {data.job_id}")
             return {
                 "success": False,
                 "message": "You have already applied for this job",
                 "data": {}
             }
+        
+        print(f"🔄 Creating application record...")
         
         # Create application
         application = JobApplication(
@@ -49,6 +57,8 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
         db.commit()
         db.refresh(application)
         
+        print(f"✅ Application created successfully - ID: {application.id}")
+        
         return {
             "success": True,
             "message": "Application submitted successfully",
@@ -59,10 +69,14 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
         }
     except Exception as e:
         db.rollback()
+        print(f"❌ Error submitting application: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "message": f"Failed to submit application: {str(e)}",
-            "data": {}
+            "data": {},
+            "error_details": str(e)
         }
 
 @router.get("/applicant/job/applied")
