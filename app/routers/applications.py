@@ -13,49 +13,57 @@ router = APIRouter()
 async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Apply for a job"""
     
-    # Check if job exists
-    job = db.query(Job).filter(Job.id == data.job_id).first()
-    if not job:
+    try:
+        # Check if job exists
+        job = db.query(Job).filter(Job.id == data.job_id).first()
+        if not job:
+            return {
+                "success": False,
+                "message": "Job not found",
+                "data": {}
+            }
+        
+        # Check if already applied
+        existing_application = db.query(JobApplication).filter(
+            JobApplication.user_id == current_user.id,
+            JobApplication.job_id == data.job_id
+        ).first()
+        
+        if existing_application:
+            return {
+                "success": False,
+                "message": "You have already applied for this job",
+                "data": {}
+            }
+        
+        # Create application
+        application = JobApplication(
+            user_id=current_user.id,
+            job_id=data.job_id,
+            cover_letter=data.cover_letter,
+            resume_file=data.resume_file,
+            status="pending"
+        )
+        
+        db.add(application)
+        db.commit()
+        db.refresh(application)
+        
+        return {
+            "success": True,
+            "message": "Application submitted successfully",
+            "data": {
+                "application_id": application.id,
+                "status": application.status
+            }
+        }
+    except Exception as e:
+        db.rollback()
         return {
             "success": False,
-            "message": "Job not found",
+            "message": f"Failed to submit application: {str(e)}",
             "data": {}
         }
-    
-    # Check if already applied
-    existing_application = db.query(JobApplication).filter(
-        JobApplication.user_id == current_user.id,
-        JobApplication.job_id == data.job_id
-    ).first()
-    
-    if existing_application:
-        return {
-            "success": False,
-            "message": "You have already applied for this job",
-            "data": {}
-        }
-    
-    # Create application
-    application = JobApplication(
-        user_id=current_user.id,
-        job_id=data.job_id,
-        cover_letter=data.cover_letter,
-        resume_file=data.resume_file,
-        status="pending"
-    )
-    
-    db.add(application)
-    db.commit()
-    db.refresh(application)
-    
-    return {
-        "success": True,
-        "message": "Application submitted successfully",
-        "data": {
-            "application_id": application.id,
-            "status": application.status
-        }
-    }
 
 @router.get("/applicant/job/applied")
 async def get_applied_jobs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
