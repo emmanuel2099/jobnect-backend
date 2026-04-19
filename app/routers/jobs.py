@@ -256,17 +256,36 @@ async def get_company_jobs(current_user: User = Depends(get_current_user), db: S
 async def create_job(data: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new job posting"""
     
-    # Verify company ownership
+    # Check if company record exists
     company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
+    
+    # If no company record exists, create one automatically for company users
     if not company:
-        return {
-            "success": False,
-            "message": "Company not found or unauthorized",
-            "data": {}
-        }
+        if current_user.user_type == "company":
+            # Auto-create company record from user data
+            company = Company(
+                user_id=current_user.id,
+                name=current_user.company or current_user.name,
+                email=current_user.email,
+                phone=current_user.phone,
+                logo=current_user.company_logo or current_user.profile_photo,
+                is_active=True
+            )
+            db.add(company)
+            db.commit()
+            db.refresh(company)
+            
+            # Update the company_id in the request data
+            data.company_id = company.id
+        else:
+            return {
+                "success": False,
+                "message": "Company not found or unauthorized",
+                "data": {}
+            }
     
     job = Job(
-        company_id=data.company_id,
+        company_id=company.id,
         title=data.title,
         description=data.description,
         requirements=data.requirements,
