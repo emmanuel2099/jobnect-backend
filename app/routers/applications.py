@@ -204,23 +204,32 @@ async def bookmark_job(data: BookmarkCreate, current_user: User = Depends(get_cu
 async def get_company_recent_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get recent applications for company's jobs"""
     
+    print(f"\n🔍 DEBUG RECENT: Fetching recent applications for user {current_user.id}")
+    
     # Find company owned by current user
     company = db.query(Company).filter(Company.user_id == current_user.id).first()
     if not company:
+        print(f"   ❌ No company found for user {current_user.id}")
         return {
             "success": True,
             "message": "No company found",
             "data": {"applications": []}
         }
     
+    print(f"   ✅ Company found: {company.id} ({company.name})")
+    
     # Get all jobs for this company
     company_jobs = db.query(Job).filter(Job.company_id == company.id).all()
     job_ids = [job.id for job in company_jobs]
+    
+    print(f"   📋 Company has {len(company_jobs)} jobs: {job_ids}")
     
     # Get recent applications for these jobs
     applications = db.query(JobApplication).filter(
         JobApplication.job_id.in_(job_ids)
     ).order_by(desc(JobApplication.created_at)).limit(10).all()
+    
+    print(f"   📝 Found {len(applications)} applications")
     
     applications_data = []
     for app in applications:
@@ -228,6 +237,7 @@ async def get_company_recent_applications(current_user: User = Depends(get_curre
         applicant = db.query(User).filter(User.id == app.user_id).first()
         
         if job and applicant:
+            print(f"      - App {app.id}: {applicant.name} → {job.title}")
             applications_data.append({
                 "id": app.id,
                 "status": app.status,
@@ -248,6 +258,8 @@ async def get_company_recent_applications(current_user: User = Depends(get_curre
                 }
             })
     
+    print(f"   ✅ Returning {len(applications_data)} applications\n")
+    
     return {
         "success": True,
         "message": "Recent applications retrieved",
@@ -258,13 +270,22 @@ async def get_company_recent_applications(current_user: User = Depends(get_curre
 async def get_company_applications_by_job(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get applications grouped by job for company"""
     
+    print(f"\n🔍 DEBUG: Fetching applications for user {current_user.id} ({current_user.name})")
+    print(f"   User type: {current_user.user_type}")
+    
     # Find company owned by current user
     company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    
+    if company:
+        print(f"   ✅ Company found: ID={company.id}, Name={company.name}")
+    else:
+        print(f"   ⚠️  No company record found for user {current_user.id}")
     
     # If no company record exists, check if user is a company type and get jobs directly
     if not company:
         # Check if user is company type
         if current_user.user_type != "company":
+            print(f"   ❌ User is not a company type")
             return {
                 "success": True,
                 "message": "User is not a company",
@@ -273,6 +294,7 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
         
         # For company users without a Company record, return empty for now
         # In production, you might want to auto-create a Company record here
+        print(f"   ⚠️  Company user but no Company record exists")
         return {
             "success": True,
             "message": "No company profile found. Please complete your company profile.",
@@ -281,6 +303,7 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
     
     # Get all jobs for this company
     jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
+    print(f"   📋 Found {len(jobs)} jobs for company {company.id}")
     
     jobs_data = []
     for job in jobs:
@@ -289,10 +312,13 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
             JobApplication.job_id == job.id
         ).order_by(desc(JobApplication.created_at)).all()
         
+        print(f"      Job {job.id} ({job.title}): {len(applications)} applications")
+        
         applications_list = []
         for app in applications:
             applicant = db.query(User).filter(User.id == app.user_id).first()
             if applicant:
+                print(f"         - Application {app.id} from {applicant.name} ({applicant.email})")
                 applications_list.append({
                     "id": app.id,
                     "status": app.status,
@@ -314,6 +340,8 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
             "applications_count": len(applications_list),
             "applications": applications_list
         })
+    
+    print(f"   ✅ Returning {len(jobs_data)} jobs with applications\n")
     
     return {
         "success": True,
