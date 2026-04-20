@@ -12,19 +12,55 @@ from app.routers import auth, profile, jobs, applications, companies, master_dat
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🔄 Creating database tables...")
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created")
-    except Exception as e:
-        print(f"⚠️  Warning: Could not create tables: {e}")
+    print("=" * 60)
+    print("🚀 STARTING JOBNECT BACKEND")
+    print("=" * 60)
     
-    print("🔄 Initializing default data...")
+    print("\n🔄 Step 1: Creating database tables...")
+    try:
+        # Force create all tables
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("✅ Database tables created successfully")
+        
+        # Verify critical tables exist
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        print(f"📋 Total tables: {len(tables)}")
+        
+        critical_tables = ['users', 'jobs', 'job_applications', 'companies']
+        missing = [t for t in critical_tables if t not in tables]
+        if missing:
+            print(f"⚠️  WARNING: Missing critical tables: {missing}")
+        else:
+            print("✅ All critical tables exist")
+            
+    except Exception as e:
+        print(f"❌ ERROR creating tables: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    print("\n🔄 Step 2: Initializing default data...")
     try:
         init_db()
         print("✅ Default data initialized")
+        
+        # Verify data exists
+        from app.models import Job, Company
+        db = SessionLocal()
+        try:
+            job_count = db.query(Job).count()
+            company_count = db.query(Company).count()
+            print(f"📊 Jobs: {job_count}, Companies: {company_count}")
+        finally:
+            db.close()
+            
     except Exception as e:
         print(f"⚠️  Warning: Could not initialize default data: {e}")
+    
+    print("\n" + "=" * 60)
+    print("✅ BACKEND READY TO ACCEPT REQUESTS")
+    print("=" * 60)
     
     yield
     
