@@ -200,8 +200,8 @@ class JobUpdate(BaseModel):
 # Application Schema
 class JobApplicationCreate(BaseModel):
     job_id: int
-    cover_letter: Optional[str]
-    resume_file: Optional[str]
+    cover_letter: Optional[str] = None
+    resume_file: Optional[str] = None
 
 class BookmarkCreate(BaseModel):
     job_id: int
