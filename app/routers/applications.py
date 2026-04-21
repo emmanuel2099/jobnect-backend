@@ -270,81 +270,90 @@ async def get_company_recent_applications(current_user: User = Depends(get_curre
 async def get_company_applications_by_job(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get applications grouped by job for company"""
     
-    print(f"\n🔍 DEBUG: Fetching applications for user {current_user.id} ({current_user.name})")
-    print(f"   User type: {current_user.user_type}")
-    
-    # Find company owned by current user
-    company = db.query(Company).filter(Company.user_id == current_user.id).first()
-    
-    if company:
-        print(f"   ✅ Company found: ID={company.id}, Name={company.name}")
-    else:
-        print(f"   ⚠️  No company record found for user {current_user.id}")
-    
-    # If no company record exists, check if user is a company type and get jobs directly
-    if not company:
-        # Check if user is company type
-        if current_user.user_type != "company":
-            print(f"   ❌ User is not a company type")
+    try:
+        print(f"\n🔍 DEBUG: Fetching applications for user {current_user.id} ({current_user.name})")
+        print(f"   User type: {current_user.user_type}")
+        
+        # Find company owned by current user
+        company = db.query(Company).filter(Company.user_id == current_user.id).first()
+        
+        if company:
+            print(f"   ✅ Company found: ID={company.id}, Name={company.name}")
+        else:
+            print(f"   ⚠️  No company record found for user {current_user.id}")
+        
+        # If no company record exists, check if user is a company type and get jobs directly
+        if not company:
+            # Check if user is company type
+            if current_user.user_type != "company":
+                print(f"   ❌ User is not a company type")
+                return {
+                    "success": True,
+                    "message": "User is not a company",
+                    "data": {"jobs": []}
+                }
+            
+            # For company users without a Company record, return empty for now
+            print(f"   ⚠️  Company user but no Company record exists")
             return {
                 "success": True,
-                "message": "User is not a company",
+                "message": "No company profile found. Please complete your company profile.",
                 "data": {"jobs": []}
             }
         
-        # For company users without a Company record, return empty for now
-        # In production, you might want to auto-create a Company record here
-        print(f"   ⚠️  Company user but no Company record exists")
+        # Get all jobs for this company
+        jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
+        print(f"   📋 Found {len(jobs)} jobs for company {company.id}")
+        
+        jobs_data = []
+        for job in jobs:
+            # Get applications for this job
+            applications = db.query(JobApplication).filter(
+                JobApplication.job_id == job.id
+            ).order_by(desc(JobApplication.created_at)).all()
+            
+            print(f"      Job {job.id} ({job.title}): {len(applications)} applications")
+            
+            applications_list = []
+            for app in applications:
+                applicant = db.query(User).filter(User.id == app.user_id).first()
+                if applicant:
+                    print(f"         - Application {app.id} from {applicant.name} ({applicant.email})")
+                    applications_list.append({
+                        "id": app.id,
+                        "status": app.status,
+                        "created_at": str(app.created_at),
+                        "applicant": {
+                            "id": applicant.id,
+                            "name": applicant.name,
+                            "email": applicant.email,
+                            "phone": applicant.phone,
+                            "profile_picture": applicant.profile_picture
+                        }
+                    })
+            
+            jobs_data.append({
+                "id": job.id,
+                "title": job.title,
+                "location": job.location,
+                "is_active": job.is_active,
+                "applications_count": len(applications_list),
+                "applications": applications_list
+            })
+        
+        print(f"   ✅ Returning {len(jobs_data)} jobs with applications\n")
+        
         return {
             "success": True,
-            "message": "No company profile found. Please complete your company profile.",
+            "message": "Applications by job retrieved",
+            "data": {"jobs": jobs_data}
+        }
+    except Exception as e:
+        print(f"   ❌ ERROR in get_company_applications_by_job: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Internal server error: {str(e)}",
             "data": {"jobs": []}
         }
-    
-    # Get all jobs for this company
-    jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
-    print(f"   📋 Found {len(jobs)} jobs for company {company.id}")
-    
-    jobs_data = []
-    for job in jobs:
-        # Get applications for this job
-        applications = db.query(JobApplication).filter(
-            JobApplication.job_id == job.id
-        ).order_by(desc(JobApplication.created_at)).all()
-        
-        print(f"      Job {job.id} ({job.title}): {len(applications)} applications")
-        
-        applications_list = []
-        for app in applications:
-            applicant = db.query(User).filter(User.id == app.user_id).first()
-            if applicant:
-                print(f"         - Application {app.id} from {applicant.name} ({applicant.email})")
-                applications_list.append({
-                    "id": app.id,
-                    "status": app.status,
-                    "created_at": str(app.created_at),
-                    "applicant": {
-                        "id": applicant.id,
-                        "name": applicant.name,
-                        "email": applicant.email,
-                        "phone": applicant.phone,
-                        "profile_picture": applicant.profile_picture
-                    }
-                })
-        
-        jobs_data.append({
-            "id": job.id,
-            "title": job.title,
-            "location": job.location,
-            "is_active": job.is_active,
-            "applications_count": len(applications_list),
-            "applications": applications_list
-        })
-    
-    print(f"   ✅ Returning {len(jobs_data)} jobs with applications\n")
-    
-    return {
-        "success": True,
-        "message": "Applications by job retrieved",
-        "data": {"jobs": jobs_data}
-    }
