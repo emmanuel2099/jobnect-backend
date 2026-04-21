@@ -319,6 +319,9 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
                 applicant = db.query(User).filter(User.id == app.user_id).first()
                 if applicant:
                     print(f"         - Application {app.id} from {applicant.name} ({applicant.email})")
+                    # Handle different profile picture field names
+                    profile_pic = getattr(applicant, 'profile_picture', None) or getattr(applicant, 'profile_photo', None)
+                    
                     applications_list.append({
                         "id": app.id,
                         "status": app.status,
@@ -327,8 +330,8 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
                             "id": applicant.id,
                             "name": applicant.name,
                             "email": applicant.email,
-                            "phone": applicant.phone,
-                            "profile_picture": applicant.profile_picture
+                            "phone": applicant.phone if hasattr(applicant, 'phone') else None,
+                            "profile_picture": profile_pic
                         }
                     })
             
