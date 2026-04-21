@@ -257,12 +257,20 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
     """Create a new job posting"""
     
     try:
-        # Check if company record exists
-        company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
+        print(f"\n🔍 CREATE JOB: User {current_user.id} ({current_user.name}) creating job")
+        print(f"   Received company_id: {data.company_id}")
         
-        # If no company record exists, create one automatically for company users
+        # First, try to find company by user_id (in case app sent user_id instead of company_id)
+        company = db.query(Company).filter(Company.user_id == current_user.id).first()
+        
+        # If not found, try by company_id
+        if not company:
+            company = db.query(Company).filter(Company.id == data.company_id, Company.user_id == current_user.id).first()
+        
+        # If still no company record exists, create one automatically for company users
         if not company:
             if current_user.user_type == "company":
+                print(f"   📝 Auto-creating company record for user {current_user.id}")
                 # Auto-create company record from user data
                 company = Company(
                     user_id=current_user.id,
@@ -275,15 +283,16 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
                 db.add(company)
                 db.commit()
                 db.refresh(company)
-                
-                # Update the company_id in the request data
-                data.company_id = company.id
+                print(f"   ✅ Company created: ID={company.id}, Name={company.name}")
             else:
+                print(f"   ❌ User is not a company type")
                 return {
                     "success": False,
                     "message": "Company not found or unauthorized",
                     "data": {}
                 }
+        else:
+            print(f"   ✅ Found existing company: ID={company.id}, Name={company.name}")
         
         # Parse deadline string to date
         deadline_date = None
@@ -292,6 +301,7 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
             try:
                 # Try parsing YYYY-MM-DD format
                 deadline_date = datetime.strptime(data.deadline, "%Y-%m-%d").date()
+                print(f"   📅 Deadline parsed (YYYY-MM-DD): {deadline_date}")
             except ValueError:
                 try:
                     # Try parsing YYYY-M-D format (without leading zeros)
@@ -299,9 +309,11 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
                     if len(parts) == 3:
                         year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
                         deadline_date = datetime(year, month, day).date()
-                except:
-                    pass
+                        print(f"   📅 Deadline parsed (YYYY-M-D): {deadline_date}")
+                except Exception as e:
+                    print(f"   ⚠️  Failed to parse deadline '{data.deadline}': {e}")
         
+        print(f"   📝 Creating job: {data.title}")
         job = Job(
             company_id=company.id,
             title=data.title,
@@ -325,6 +337,7 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
         db.commit()
         db.refresh(job)
         
+        print(f"   ✅ Job created successfully: ID={job.id}\n")
         return {
             "success": True,
             "message": "Job created successfully",
@@ -332,6 +345,9 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
         }
     except Exception as e:
         db.rollback()
+        print(f"   ❌ ERROR creating job: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "message": f"Failed to create job: {str(e)}",
