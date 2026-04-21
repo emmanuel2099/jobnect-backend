@@ -160,43 +160,6 @@ class ReferenceUpdate(BaseModel):
     email: EmailStr
     relation: str
 
-# Job Schemas
-class JobCreate(BaseModel):
-    company_id: int
-    title: str
-    description: Optional[str]
-    requirements: Optional[str]
-    responsibilities: Optional[str]
-    category_id: Optional[int]
-    job_type_id: Optional[int]
-    job_level_id: Optional[int]
-    salary_min: Optional[float]
-    salary_max: Optional[float]
-    location: Optional[str]
-    city_id: Optional[int]
-    deadline: Optional[str]  # Accept string and convert to date
-    vacancies: int = 1
-    experience_required: Optional[str]
-
-class JobUpdate(BaseModel):
-    id: int
-    company_id: int
-    title: str
-    description: Optional[str]
-    requirements: Optional[str]
-    responsibilities: Optional[str]
-    category_id: Optional[int]
-    job_type_id: Optional[int]
-    job_level_id: Optional[int]
-    salary_min: Optional[float]
-    salary_max: Optional[float]
-    location: Optional[str]
-    city_id: Optional[int]
-    deadline: Optional[date]
-    vacancies: int = 1
-    experience_required: Optional[str]
-    is_active: bool = True
-
 # Application Schema
 class JobApplicationCreate(BaseModel):
     job_id: int
@@ -245,7 +208,7 @@ class JobCreate(BaseModel):
     salary_max: Optional[float]
     location: Optional[str]
     city_id: Optional[int]
-    deadline: Optional[date]
+    deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int] = 1
     experience_required: Optional[str]
 
@@ -262,7 +225,7 @@ class JobUpdate(BaseModel):
     salary_max: Optional[float]
     location: Optional[str]
     city_id: Optional[int]
-    deadline: Optional[date]
+    deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int]
     experience_required: Optional[str]
     is_active: Optional[bool] = True
