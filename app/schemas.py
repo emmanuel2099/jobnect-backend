@@ -207,7 +207,7 @@ class JobCreate(BaseModel):
     salary_min: Optional[float]
     salary_max: Optional[float]
     location: Optional[str]
-    city_id: Optional[int]
+    city: Optional[str]  # Changed from city_id to city (free text)
     deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int] = 1
     experience_required: Optional[str]
@@ -224,7 +224,7 @@ class JobUpdate(BaseModel):
     salary_min: Optional[float]
     salary_max: Optional[float]
     location: Optional[str]
-    city_id: Optional[int]
+    city: Optional[str]  # Changed from city_id to city (free text)
     deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int]
     experience_required: Optional[str]

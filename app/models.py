@@ -265,7 +265,7 @@ class Job(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"))
     category_id = Column(Integer, ForeignKey("job_categories.id", ondelete="SET NULL"))
-    city_id = Column(Integer, ForeignKey("cities.id", ondelete="SET NULL"))
+    city_id = Column(Integer, ForeignKey("cities.id", ondelete="SET NULL"))  # Keep for backward compatibility
     job_type_id = Column(Integer, ForeignKey("job_types.id", ondelete="SET NULL"))
     job_level_id = Column(Integer, ForeignKey("job_levels.id", ondelete="SET NULL"))
     
@@ -276,6 +276,7 @@ class Job(Base):
     salary_min = Column(Float)
     salary_max = Column(Float)
     location = Column(String(255))
+    city = Column(String(255))  # Free text city field
     deadline = Column(Date)
     vacancies = Column(Integer, default=1)
     experience_required = Column(String(100))
@@ -287,7 +288,7 @@ class Job(Base):
     # Relationships
     company = relationship("Company", back_populates="jobs")
     category = relationship("JobCategory", back_populates="jobs")
-    city = relationship("City", back_populates="jobs")
+    city_rel = relationship("City", back_populates="jobs", foreign_keys=[city_id])  # Renamed to avoid conflict
     job_type = relationship("JobType", back_populates="jobs")
     job_level = relationship("JobLevel", back_populates="jobs")
     applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
