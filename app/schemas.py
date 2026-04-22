@@ -233,3 +233,10 @@ class JobUpdate(BaseModel):
 # Skills Schema
 class SkillsUpdate(BaseModel):
     skills: List[str]
+
+# Company Profile Schema
+class CompanyProfileUpdate(BaseModel):
+    name: str
+    description: str
+    location: str
+    city: Optional[str] = None

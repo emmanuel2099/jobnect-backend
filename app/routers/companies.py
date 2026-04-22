@@ -4,7 +4,7 @@ from sqlalchemy import desc
 
 from app.database import get_db
 from app.models import Company, Job, Notification, SocialLink, KYC, User
-from app.schemas import SocialLinkCreate, SocialLinkUpdate, KYCSubmit
+from app.schemas import SocialLinkCreate, SocialLinkUpdate, KYCSubmit, CompanyProfileUpdate
 from app.auth import get_current_user
 
 router = APIRouter()
@@ -450,10 +450,7 @@ async def get_company_profile(current_user: User = Depends(get_current_user), db
 
 @router.post("/company/profile/update")
 async def update_company_profile(
-    name: str,
-    description: str,
-    location: str,
-    city: str,
+    data: CompanyProfileUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -466,9 +463,9 @@ async def update_company_profile(
         # Create company record if it doesn't exist
         company = Company(
             user_id=current_user.id,
-            name=name,
-            description=description,
-            location=location,
+            name=data.name,
+            description=data.description,
+            location=data.location,
             email=current_user.email,
             phone=current_user.phone,
             is_active=True
@@ -476,12 +473,12 @@ async def update_company_profile(
         db.add(company)
     else:
         # Update existing company
-        company.name = name
-        company.description = description
-        company.location = location
+        company.name = data.name
+        company.description = data.description
+        company.location = data.location
     
     # Also update user's company name
-    current_user.company = name
+    current_user.company = data.name
     
     db.commit()
     db.refresh(company)
@@ -494,8 +491,8 @@ async def update_company_profile(
                 "id": company.id,
                 "name": company.name,
                 "description": company.description,
-                "location": location,
-                "city": city
+                "location": company.location,
+                "city": data.city or ""
             }
         }
     }
