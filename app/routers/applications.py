@@ -224,10 +224,10 @@ async def get_company_recent_applications(current_user: User = Depends(get_curre
     
     print(f"   📋 Company has {len(company_jobs)} jobs: {job_ids}")
     
-    # Get recent applications for these jobs
+    # Get recent applications for these jobs (all of them, not limited)
     applications = db.query(JobApplication).filter(
         JobApplication.job_id.in_(job_ids)
-    ).order_by(desc(JobApplication.created_at)).limit(10).all()
+    ).order_by(desc(JobApplication.created_at)).all()
     
     print(f"   📝 Found {len(applications)} applications")
     
