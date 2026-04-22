@@ -142,6 +142,13 @@ async def upload_company_logo(
     # Update user company logo URL
     logo_url = f"https://jobnect-backend.onrender.com/static/uploads/{unique_filename}"
     current_user.company_logo = logo_url
+    
+    # Also update Company table if exists
+    from app.models import Company
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    if company:
+        company.logo = logo_url
+    
     db.commit()
     
     return {
