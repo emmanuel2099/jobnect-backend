@@ -65,6 +65,7 @@ async def get_conversations(
                     "name": other_user.name,
                     "email": other_user.email,
                     "profile_photo": other_user.profile_photo,
+                    "company_logo": other_user.company_logo,
                     "company": other_user.company,
                     "user_type": "company" if other_user.company and other_user.company != "N/A" else "applicant"
                 } if other_user else None,
