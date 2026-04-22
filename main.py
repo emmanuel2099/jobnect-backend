@@ -40,8 +40,22 @@ async def lifespan(app: FastAPI):
                 print("✅ City column added successfully")
             else:
                 print("✅ City column already exists")
+            
+            # Check if currency column exists
+            result = db.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='jobs' AND column_name='currency';
+            """))
+            if not result.fetchone():
+                print("🔄 Adding currency column to jobs table...")
+                db.execute(text("ALTER TABLE jobs ADD COLUMN currency VARCHAR(10) DEFAULT 'USD';"))
+                db.commit()
+                print("✅ Currency column added successfully")
+            else:
+                print("✅ Currency column already exists")
         except Exception as e:
-            print(f"⚠️  Warning: Could not add city column: {e}")
+            print(f"⚠️  Warning: Could not add columns: {e}")
             db.rollback()
         finally:
             db.close()

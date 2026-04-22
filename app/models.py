@@ -277,6 +277,7 @@ class Job(Base):
     salary_max = Column(Float)
     location = Column(String(255))
     city = Column(String(255))  # Free text city field
+    currency = Column(String(10), default='USD')  # Currency: USD or NGN
     deadline = Column(Date)
     vacancies = Column(Integer, default=1)
     experience_required = Column(String(100))
