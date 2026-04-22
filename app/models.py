@@ -203,7 +203,7 @@ class City(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    jobs = relationship("Job", back_populates="city")
+    jobs = relationship("Job", back_populates="city_rel")
 
 # Skill Model
 class Skill(Base):
