@@ -509,12 +509,17 @@ async def approve_application(data: dict, current_user: User = Depends(get_curre
         
         print(f"✅ Application {application_id} approved by company {company.id}")
         
+        # Get applicant user ID for conversation creation
+        applicant = db.query(User).filter(User.id == application.user_id).first()
+        
         return {
             "success": True,
             "message": "Application approved successfully",
             "data": {
                 "application_id": application_id,
-                "status": "approved"
+                "status": "approved",
+                "applicant_user_id": applicant.id if applicant else None,
+                "company_user_id": current_user.id
             }
         }
     except Exception as e:
@@ -525,3 +530,79 @@ async def approve_application(data: dict, current_user: User = Depends(get_curre
             "message": f"Failed to approve application: {str(e)}",
             "data": {}
         }
+
+@router.get("/application/{application_id}/chat-info")
+async def get_application_chat_info(application_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get user IDs for creating a conversation from an application"""
+    
+    try:
+        # Get application
+        application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+        if not application:
+            return {
+                "success": False,
+                "message": "Application not found",
+                "data": {}
+            }
+        
+        # Get job and company
+        job = db.query(Job).filter(Job.id == application.job_id).first()
+        if not job:
+            return {
+                "success": False,
+                "message": "Job not found",
+                "data": {}
+            }
+        
+        company = db.query(Company).filter(Company.id == job.company_id).first()
+        if not company:
+            return {
+                "success": False,
+                "message": "Company not found",
+                "data": {}
+            }
+        
+        # Get company user
+        company_user = db.query(User).filter(User.id == company.user_id).first()
+        applicant_user = db.query(User).filter(User.id == application.user_id).first()
+        
+        if not company_user or not applicant_user:
+            return {
+                "success": False,
+                "message": "User information not found",
+                "data": {}
+            }
+        
+        # Verify current user is either the applicant or company
+        if current_user.id != applicant_user.id and current_user.id != company_user.id:
+            return {
+                "success": False,
+                "message": "Unauthorized",
+                "data": {}
+            }
+        
+        # Determine the other user
+        other_user_id = company_user.id if current_user.id == applicant_user.id else applicant_user.id
+        other_user_name = company_user.name if current_user.id == applicant_user.id else applicant_user.name
+        
+        return {
+            "success": True,
+            "message": "Chat info retrieved",
+            "data": {
+                "application_id": application_id,
+                "status": application.status,
+                "applicant_user_id": applicant_user.id,
+                "company_user_id": company_user.id,
+                "other_user_id": other_user_id,
+                "other_user_name": other_user_name,
+                "company_name": company.name
+            }
+        }
+    except Exception as e:
+        print(f"❌ ERROR getting chat info: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Failed to get chat info: {str(e)}",
+            "data": {}
+        }
+
