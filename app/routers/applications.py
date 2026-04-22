@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db
-from app.models import JobApplication, Bookmark, Job, Company, User
+from app.models import JobApplication, Bookmark, Job, Company, User, Resume, Experience, Education
 from app.schemas import JobApplicationCreate, BookmarkCreate
 from app.auth import get_current_user
 
