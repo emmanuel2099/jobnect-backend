@@ -22,10 +22,18 @@ async def upload_profile_photo(
 ):
     """Upload profile photo"""
     
-    # Validate file type
+    # Validate file type by content_type and extension
     allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP are allowed")
+    allowed_extensions = ["jpg", "jpeg", "png", "webp"]
+    
+    file_extension = file.filename.split(".")[-1].lower() if file.filename else ""
+    
+    # Check both content_type and extension
+    if file.content_type not in allowed_types and file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid file type. Only JPG, PNG, and WEBP are allowed. Received: {file.content_type}, extension: {file_extension}"
+        )
     
     # Validate file size (5MB max)
     file_content = await file.read()
@@ -33,7 +41,6 @@ async def upload_profile_photo(
         raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
     
     # Generate unique filename
-    file_extension = file.filename.split(".")[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = UPLOAD_DIR / unique_filename
     
@@ -61,10 +68,18 @@ async def upload_image(
 ):
     """Upload any image and return URL"""
     
-    # Validate file type
+    # Validate file type by content_type and extension
     allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP are allowed")
+    allowed_extensions = ["jpg", "jpeg", "png", "webp"]
+    
+    file_extension = file.filename.split(".")[-1].lower() if file.filename else ""
+    
+    # Check both content_type and extension
+    if file.content_type not in allowed_types and file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid file type. Only JPG, PNG, and WEBP are allowed. Received: {file.content_type}, extension: {file_extension}"
+        )
     
     # Validate file size (5MB max)
     file_content = await file.read()
@@ -72,7 +87,6 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
     
     # Generate unique filename
-    file_extension = file.filename.split(".")[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = UPLOAD_DIR / unique_filename
     
