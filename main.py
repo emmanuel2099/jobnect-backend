@@ -22,6 +22,30 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine, checkfirst=True)
         print("✅ Database tables created successfully")
         
+        # Add city column if it doesn't exist
+        from sqlalchemy import text
+        from app.database import SessionLocal
+        db = SessionLocal()
+        try:
+            # Check if city column exists
+            result = db.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='jobs' AND column_name='city';
+            """))
+            if not result.fetchone():
+                print("🔄 Adding city column to jobs table...")
+                db.execute(text("ALTER TABLE jobs ADD COLUMN city VARCHAR(255);"))
+                db.commit()
+                print("✅ City column added successfully")
+            else:
+                print("✅ City column already exists")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not add city column: {e}")
+            db.rollback()
+        finally:
+            db.close()
+        
         # Verify critical tables exist
         from sqlalchemy import inspect
         inspector = inspect(engine)
@@ -42,6 +66,7 @@ async def lifespan(app: FastAPI):
     
     print("\n🔄 Step 2: Initializing default data...")
     try:
+        from app.database import SessionLocal
         init_db()
         print("✅ Default data initialized")
         
