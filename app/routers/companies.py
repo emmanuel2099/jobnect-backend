@@ -447,3 +447,55 @@ async def get_company_profile(current_user: User = Depends(get_current_user), db
             }
         }
     }
+
+@router.post("/company/profile/update")
+async def update_company_profile(
+    name: str,
+    description: str,
+    location: str,
+    city: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update company profile"""
+    
+    # Find company owned by current user
+    company = db.query(Company).filter(Company.user_id == current_user.id).first()
+    
+    if not company:
+        # Create company record if it doesn't exist
+        company = Company(
+            user_id=current_user.id,
+            name=name,
+            description=description,
+            location=location,
+            email=current_user.email,
+            phone=current_user.phone,
+            is_active=True
+        )
+        db.add(company)
+    else:
+        # Update existing company
+        company.name = name
+        company.description = description
+        company.location = location
+    
+    # Also update user's company name
+    current_user.company = name
+    
+    db.commit()
+    db.refresh(company)
+    
+    return {
+        "success": True,
+        "message": "Company profile updated successfully",
+        "data": {
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "description": company.description,
+                "location": location,
+                "city": city
+            }
+        }
+    }
