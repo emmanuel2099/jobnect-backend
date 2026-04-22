@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 from typing import Optional
 
 from app.database import get_db
-from app.models import Job, Company, JobCategory, City, JobType, JobLevel, User
+from app.models import Job, Company, JobCategory, City, JobType, JobLevel, User, JobApplication
 from app.schemas import JobCreate, JobUpdate
 from app.auth import get_current_user
 
@@ -233,18 +233,24 @@ async def get_company_jobs(current_user: User = Depends(get_current_user), db: S
     
     jobs = db.query(Job).filter(Job.company_id == company.id).order_by(desc(Job.created_at)).all()
     
-    jobs_data = [{
-        "id": job.id,
-        "title": job.title,
-        "description": job.description,
-        "salary_min": job.salary_min,
-        "salary_max": job.salary_max,
-        "location": job.location,
-        "deadline": str(job.deadline) if job.deadline else None,
-        "vacancies": job.vacancies,
-        "is_active": job.is_active,
-        "created_at": str(job.created_at)
-    } for job in jobs]
+    jobs_data = []
+    for job in jobs:
+        # Count applications for this job
+        applications_count = db.query(JobApplication).filter(JobApplication.job_id == job.id).count()
+        
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "description": job.description,
+            "salary_min": job.salary_min,
+            "salary_max": job.salary_max,
+            "location": job.location,
+            "deadline": str(job.deadline) if job.deadline else None,
+            "vacancies": job.vacancies,
+            "is_active": job.is_active,
+            "created_at": str(job.created_at),
+            "applications_count": applications_count
+        })
     
     return {
         "success": True,
