@@ -104,3 +104,50 @@ async def upload_image(
             "imageUrl": image_url
         }
     }
+
+@router.post("/upload/company-logo")
+async def upload_company_logo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload company logo"""
+    
+    # Validate file type by content_type and extension
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+    allowed_extensions = ["jpg", "jpeg", "png", "webp"]
+    
+    file_extension = file.filename.split(".")[-1].lower() if file.filename else ""
+    
+    # Check both content_type and extension
+    if file.content_type not in allowed_types and file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid file type. Only JPG, PNG, and WEBP are allowed. Received: {file.content_type}, extension: {file_extension}"
+        )
+    
+    # Validate file size (5MB max)
+    file_content = await file.read()
+    if len(file_content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
+    
+    # Generate unique filename
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    # Update user company logo URL
+    logo_url = f"https://jobnect-backend.onrender.com/static/uploads/{unique_filename}"
+    current_user.company_logo = logo_url
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Company logo uploaded successfully",
+        "data": {
+            "logoUrl": logo_url
+        }
+    }
