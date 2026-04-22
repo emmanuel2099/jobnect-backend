@@ -326,6 +326,7 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
                         "id": app.id,
                         "status": app.status,
                         "created_at": str(app.created_at),
+                        "cover_letter": app.cover_letter,
                         "applicant": {
                             "id": applicant.id,
                             "name": applicant.name,
@@ -359,4 +360,168 @@ async def get_company_applications_by_job(current_user: User = Depends(get_curre
             "success": False,
             "message": f"Internal server error: {str(e)}",
             "data": {"jobs": []}
+        }
+
+@router.get("/company/applicant/{applicant_id}")
+async def get_applicant_profile(applicant_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get full profile of an applicant including resume, skills, experience, education"""
+    
+    try:
+        # Verify current user is a company
+        if current_user.user_type != "company":
+            return {
+                "success": False,
+                "message": "Unauthorized - Only companies can view applicant profiles",
+                "data": {}
+            }
+        
+        # Get applicant user
+        applicant = db.query(User).filter(User.id == applicant_id).first()
+        if not applicant:
+            return {
+                "success": False,
+                "message": "Applicant not found",
+                "data": {}
+            }
+        
+        # Get resume
+        resume = db.query(Resume).filter(Resume.user_id == applicant_id).first()
+        
+        # Get experiences
+        experiences = []
+        if resume:
+            exps = db.query(Experience).filter(Experience.resume_id == resume.id).all()
+            experiences = [{
+                "id": exp.id,
+                "business": exp.business,
+                "employer": exp.employer,
+                "designation": exp.designation,
+                "department": exp.department,
+                "responsibilities": exp.responsibilities,
+                "start_date": str(exp.start_date) if exp.start_date else None,
+                "end_date": str(exp.end_date) if exp.end_date else None
+            } for exp in exps]
+        
+        # Get educations
+        educations = []
+        if resume:
+            edus = db.query(Education).filter(Education.resume_id == resume.id).all()
+            educations = [{
+                "id": edu.id,
+                "level": edu.level,
+                "degree": edu.degree,
+                "institution": edu.institution,
+                "result": edu.result,
+                "passing_year": edu.passing_year,
+                "start_date": str(edu.start_date) if edu.start_date else None,
+                "end_date": str(edu.end_date) if edu.end_date else None
+            } for edu in edus]
+        
+        # Parse skills
+        skills = []
+        if resume and resume.skills:
+            import json
+            try:
+                skills = json.loads(resume.skills)
+            except:
+                skills = []
+        
+        profile_data = {
+            "id": applicant.id,
+            "name": applicant.name,
+            "email": applicant.email,
+            "phone": applicant.phone,
+            "profile_photo": getattr(applicant, 'profile_photo', None),
+            "resume": {
+                "designation": resume.designation if resume else None,
+                "city": resume.city if resume else None,
+                "objective": resume.objective if resume else None,
+                "present_salary": resume.present_salary if resume else None,
+                "expected_salary": resume.expected_salary if resume else None,
+                "job_level": resume.job_level if resume else None,
+                "job_nature": resume.job_nature if resume else None,
+                "skills": skills
+            } if resume else None,
+            "experiences": experiences,
+            "educations": educations
+        }
+        
+        return {
+            "success": True,
+            "message": "Applicant profile retrieved",
+            "data": profile_data
+        }
+    except Exception as e:
+        print(f"❌ ERROR getting applicant profile: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Failed to get applicant profile: {str(e)}",
+            "data": {}
+        }
+
+@router.post("/company/application/approve")
+async def approve_application(data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Approve a job application"""
+    
+    try:
+        application_id = data.get('application_id')
+        
+        if not application_id:
+            return {
+                "success": False,
+                "message": "Application ID is required",
+                "data": {}
+            }
+        
+        # Verify current user is a company
+        if current_user.user_type != "company":
+            return {
+                "success": False,
+                "message": "Unauthorized - Only companies can approve applications",
+                "data": {}
+            }
+        
+        # Get application
+        application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+        if not application:
+            return {
+                "success": False,
+                "message": "Application not found",
+                "data": {}
+            }
+        
+        # Verify the job belongs to this company
+        job = db.query(Job).filter(Job.id == application.job_id).first()
+        company = db.query(Company).filter(Company.user_id == current_user.id).first()
+        
+        if not job or not company or job.company_id != company.id:
+            return {
+                "success": False,
+                "message": "Unauthorized - This application does not belong to your company",
+                "data": {}
+            }
+        
+        # Update application status
+        application.status = "approved"
+        db.commit()
+        
+        print(f"✅ Application {application_id} approved by company {company.id}")
+        
+        return {
+            "success": True,
+            "message": "Application approved successfully",
+            "data": {
+                "application_id": application_id,
+                "status": "approved"
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"❌ ERROR approving application: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Failed to approve application: {str(e)}",
+            "data": {}
         }
