@@ -38,7 +38,7 @@ class ProfileUpdate(BaseModel):
     name: str
     email: EmailStr
     phone: str
-    company: Optional[str]
+    company: Optional[str] = None
 
 class ImageUpdate(BaseModel):
     profile_photo: str
