@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import Job, Company, JobCategory, City, JobType, JobLevel, User, JobApplication
 from app.schemas import JobCreate, JobUpdate
 from app.auth import get_current_user
+from app.notification_service import notify_new_job_posted
 
 router = APIRouter()
 
@@ -350,6 +351,14 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
         db.refresh(job)
         
         print(f"   ✅ Job created successfully: ID={job.id}\n")
+        
+        # Send notifications to all job seekers
+        try:
+            notify_new_job_posted(db, job.id)
+            print(f"   📬 Notifications sent to job seekers")
+        except Exception as notif_error:
+            print(f"   ⚠️  Failed to send notifications: {notif_error}")
+        
         return {
             "success": True,
             "message": "Job created successfully",

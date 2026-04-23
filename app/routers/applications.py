@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import JobApplication, Bookmark, Job, Company, User, Resume, Experience, Education
 from app.schemas import JobApplicationCreate, BookmarkCreate
 from app.auth import get_current_user
+from app.notification_service import notify_job_application
 
 router = APIRouter()
 
@@ -58,6 +59,13 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
         db.refresh(application)
         
         print(f"✅ Application created successfully - ID: {application.id}")
+        
+        # Send notification to company
+        try:
+            notify_job_application(db, data.job_id, current_user.id)
+            print(f"📬 Notification sent to company")
+        except Exception as notif_error:
+            print(f"⚠️  Failed to send notification: {notif_error}")
         
         return {
             "success": True,

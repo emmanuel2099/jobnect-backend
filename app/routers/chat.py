@@ -7,6 +7,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import User, Conversation, Message
 from app.auth import get_current_user
+from app.notification_service import notify_new_message
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v10/chat", tags=["chat"])
@@ -178,6 +179,12 @@ async def send_message(
 
         db.commit()
         db.refresh(new_message)
+        
+        # Send notification to receiver
+        try:
+            notify_new_message(db, current_user.id, receiver_id, request.message)
+        except Exception as notif_error:
+            print(f"Failed to send message notification: {notif_error}")
 
         return {
             "message": {
