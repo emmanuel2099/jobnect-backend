@@ -68,6 +68,7 @@ def notify_application_status_change(db: Session, application_id: int, status: s
     
     if application and application.job:
         status_messages = {
+            "approved": f"Congratulations! Your application for {application.job.title} has been approved",
             "accepted": f"Congratulations! Your application for {application.job.title} has been accepted",
             "rejected": f"Your application for {application.job.title} was not successful this time",
             "under_review": f"Your application for {application.job.title} is under review",
@@ -79,7 +80,7 @@ def notify_application_status_change(db: Session, application_id: int, status: s
         create_notification(
             db=db,
             user_id=application.user_id,
-            title="Application Status Update",
+            title="Application Approved!" if status == "approved" else "Application Status Update",
             message=message,
             notification_type="application_status",
             related_id=application.job_id

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models import JobApplication, Bookmark, Job, Company, User, Resume, Experience, Education
 from app.schemas import JobApplicationCreate, BookmarkCreate
 from app.auth import get_current_user
-from app.notification_service import notify_job_application
+from app.notification_service import notify_job_application, notify_application_status_change
 
 router = APIRouter()
 
@@ -516,6 +516,13 @@ async def approve_application(data: dict, current_user: User = Depends(get_curre
         db.commit()
         
         print(f"✅ Application {application_id} approved by company {company.id}")
+        
+        # Send notification to applicant
+        try:
+            notify_application_status_change(db, application_id, "approved")
+            print(f"📬 Approval notification sent to applicant {application.user_id}")
+        except Exception as notif_error:
+            print(f"⚠️  Failed to send approval notification: {notif_error}")
         
         # Get applicant user ID for conversation creation
         applicant = db.query(User).filter(User.id == application.user_id).first()
