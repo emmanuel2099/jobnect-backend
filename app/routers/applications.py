@@ -131,9 +131,13 @@ async def get_applied_jobs(current_user: User = Depends(get_current_user), db: S
 async def get_bookmarked_jobs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get all bookmarked jobs"""
     
+    print(f"\n🔖 Fetching bookmarks for user {current_user.id}")
+    
     bookmarks = db.query(Bookmark).filter(
         Bookmark.user_id == current_user.id
     ).order_by(desc(Bookmark.created_at)).all()
+    
+    print(f"   Found {len(bookmarks)} bookmarks")
     
     bookmarked_jobs = []
     for bookmark in bookmarks:
@@ -141,17 +145,22 @@ async def get_bookmarked_jobs(current_user: User = Depends(get_current_user), db
         if job:
             company = db.query(Company).filter(Company.id == job.company_id).first()
             
+            print(f"   - Bookmark {bookmark.id}: Job {job.id} ({job.title})")
+            
             bookmarked_jobs.append({
-                "bookmark_id": bookmark.id,
-                "bookmarked_at": str(bookmark.created_at),
+                "id": bookmark.id,
+                "created_at": str(bookmark.created_at),
                 "job": {
                     "id": job.id,
                     "title": job.title,
                     "description": job.description,
                     "salary_min": job.salary_min,
                     "salary_max": job.salary_max,
+                    "currency": job.currency if hasattr(job, 'currency') else "USD",
                     "location": job.location,
+                    "city": job.city if hasattr(job, 'city') else None,
                     "deadline": str(job.deadline) if job.deadline else None,
+                    "created_at": str(job.created_at) if hasattr(job, 'created_at') else None,
                     "company": {
                         "id": company.id,
                         "name": company.name,
@@ -159,6 +168,8 @@ async def get_bookmarked_jobs(current_user: User = Depends(get_current_user), db
                     } if company else None
                 }
             })
+    
+    print(f"   ✅ Returning {len(bookmarked_jobs)} bookmarked jobs\n")
     
     return {
         "success": True,
