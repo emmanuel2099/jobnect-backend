@@ -11,109 +11,142 @@ from app.routers import auth, profile, jobs, applications, companies, master_dat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("=" * 60)
-    print("🚀 STARTING JOBNECT BACKEND")
-    print("=" * 60)
-    
-    # Check if DATABASE_URL is set
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        print("⚠️  WARNING: DATABASE_URL not set. Database operations will fail.")
-        print("✅ API server started (database not configured)")
-        yield
-        return
-    
-    print(f"🔗 Database URL: {database_url[:30]}...")
-    
-    print("\n🔄 Step 1: Creating database tables...")
+    # Startup - wrapped in try-catch to show actual errors
     try:
-        # Force create all tables
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-        print("✅ Database tables created successfully")
+        print("=" * 60)
+        print("🚀 STARTING JOBNECT BACKEND")
+        print("=" * 60)
         
-        # Add city column if it doesn't exist
-        from sqlalchemy import text
-        from app.database import SessionLocal
-        db = SessionLocal()
+        # Print all environment variables (without sensitive values)
+        print("\n📋 Environment Check:")
+        print(f"   DATABASE_URL: {'✅ Set' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
+        print(f"   SECRET_KEY: {'✅ Set' if os.getenv('SECRET_KEY') else '❌ NOT SET'}")
+        print(f"   FLUTTERWAVE_PUBLIC_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_PUBLIC_KEY') else '❌ NOT SET'}")
+        print(f"   FLUTTERWAVE_SECRET_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_SECRET_KEY') else '❌ NOT SET'}")
+        print(f"   FLUTTERWAVE_ENCRYPTION_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_ENCRYPTION_KEY') else '❌ NOT SET'}")
+        
+        # Check if DATABASE_URL is set
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            print("\n⚠️  WARNING: DATABASE_URL not set!")
+            print("⚠️  Database operations will fail.")
+            print("⚠️  Please add DATABASE_URL in Render environment variables.")
+            print("✅ API server started (database not configured)")
+            yield
+            return
+        
+        print(f"\n🔗 Database URL: {database_url[:30]}...")
+        
+        print("\n🔄 Step 1: Creating database tables...")
         try:
-            # Check if city column exists
-            result = db.execute(text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='jobs' AND column_name='city';
-            """))
-            if not result.fetchone():
-                print("🔄 Adding city column to jobs table...")
-                db.execute(text("ALTER TABLE jobs ADD COLUMN city VARCHAR(255);"))
-                db.commit()
-                print("✅ City column added successfully")
-            else:
-                print("✅ City column already exists")
+            # Force create all tables
+            Base.metadata.create_all(bind=engine, checkfirst=True)
+            print("✅ Database tables created successfully")
             
-            # Check if currency column exists
-            result = db.execute(text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='jobs' AND column_name='currency';
-            """))
-            if not result.fetchone():
-                print("🔄 Adding currency column to jobs table...")
-                db.execute(text("ALTER TABLE jobs ADD COLUMN currency VARCHAR(10) DEFAULT 'USD';"))
-                db.commit()
-                print("✅ Currency column added successfully")
+            # Add city column if it doesn't exist
+            from sqlalchemy import text
+            from app.database import SessionLocal
+            db = SessionLocal()
+            try:
+                # Check if city column exists
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='jobs' AND column_name='city';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding city column to jobs table...")
+                    db.execute(text("ALTER TABLE jobs ADD COLUMN city VARCHAR(255);"))
+                    db.commit()
+                    print("✅ City column added successfully")
+                else:
+                    print("✅ City column already exists")
+                
+                # Check if currency column exists
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='jobs' AND column_name='currency';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding currency column to jobs table...")
+                    db.execute(text("ALTER TABLE jobs ADD COLUMN currency VARCHAR(10) DEFAULT 'USD';"))
+                    db.commit()
+                    print("✅ Currency column added successfully")
+                else:
+                    print("✅ Currency column already exists")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not add columns: {e}")
+                db.rollback()
+            finally:
+                db.close()
+            
+            # Verify critical tables exist
+            from sqlalchemy import inspect
+            inspector = inspect(engine)
+            tables = inspector.get_table_names()
+            print(f"📋 Total tables: {len(tables)}")
+            
+            critical_tables = ['users', 'jobs', 'job_applications', 'companies']
+            missing = [t for t in critical_tables if t not in tables]
+            if missing:
+                print(f"⚠️  WARNING: Missing critical tables: {missing}")
             else:
-                print("✅ Currency column already exists")
+                print("✅ All critical tables exist")
+                
         except Exception as e:
-            print(f"⚠️  Warning: Could not add columns: {e}")
-            db.rollback()
-        finally:
-            db.close()
+            print(f"❌ ERROR creating tables: {e}")
+            print("⚠️  Continuing startup anyway...")
+            import traceback
+            traceback.print_exc()
         
-        # Verify critical tables exist
-        from sqlalchemy import inspect
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        print(f"📋 Total tables: {len(tables)}")
-        
-        critical_tables = ['users', 'jobs', 'job_applications', 'companies']
-        missing = [t for t in critical_tables if t not in tables]
-        if missing:
-            print(f"⚠️  WARNING: Missing critical tables: {missing}")
-        else:
-            print("✅ All critical tables exist")
+        print("\n🔄 Step 2: Initializing default data...")
+        try:
+            from app.database import SessionLocal
+            init_db()
+            print("✅ Default data initialized")
             
+            # Verify data exists
+            from app.models import Job, Company
+            db = SessionLocal()
+            try:
+                job_count = db.query(Job).count()
+                company_count = db.query(Company).count()
+                print(f"📊 Jobs: {job_count}, Companies: {company_count}")
+            finally:
+                db.close()
+                
+        except Exception as e:
+            print(f"⚠️  Warning: Could not initialize default data: {e}")
+            print("⚠️  Continuing startup anyway...")
+        
+        print("\n" + "=" * 60)
+        print("✅ BACKEND READY TO ACCEPT REQUESTS")
+        print("=" * 60)
+        
+        yield
+        
     except Exception as e:
-        print(f"❌ ERROR creating tables: {e}")
-        print("⚠️  Continuing startup anyway...")
+        # Catch any startup errors and print them clearly
+        print("\n" + "=" * 60)
+        print("❌ FATAL ERROR DURING STARTUP")
+        print("=" * 60)
+        print(f"\nError Type: {type(e).__name__}")
+        print(f"Error Message: {str(e)}")
+        print("\nFull Traceback:")
         import traceback
         traceback.print_exc()
-    
-    print("\n🔄 Step 2: Initializing default data...")
-    try:
-        from app.database import SessionLocal
-        init_db()
-        print("✅ Default data initialized")
+        print("\n" + "=" * 60)
+        print("🔧 TROUBLESHOOTING:")
+        print("=" * 60)
+        print("1. Check that DATABASE_URL is set in Render environment")
+        print("2. Verify database is running and accessible")
+        print("3. Check all required environment variables are set")
+        print("4. Review the error message above for specific issues")
+        print("=" * 60)
         
-        # Verify data exists
-        from app.models import Job, Company
-        db = SessionLocal()
-        try:
-            job_count = db.query(Job).count()
-            company_count = db.query(Company).count()
-            print(f"📊 Jobs: {job_count}, Companies: {company_count}")
-        finally:
-            db.close()
-            
-    except Exception as e:
-        print(f"⚠️  Warning: Could not initialize default data: {e}")
-        print("⚠️  Continuing startup anyway...")
-    
-    print("\n" + "=" * 60)
-    print("✅ BACKEND READY TO ACCEPT REQUESTS")
-    print("=" * 60)
-    
-    yield
+        # Re-raise the error so Render shows it failed
+        raise
     
     # Shutdown
     print("👋 Shutting down...")
