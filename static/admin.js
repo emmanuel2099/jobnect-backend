@@ -2,7 +2,7 @@ const API = '/api/v10';
 let currentFilter = 'all';
 
 // Show/Hide Sections
-function showSection(section) {
+function showSection(section, event) {
     // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     
@@ -14,7 +14,9 @@ function showSection(section) {
     
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    event.target.closest('.nav-item').classList.add('active');
+    if (event && event.target) {
+        event.target.closest('.nav-item').classList.add('active');
+    }
     
     // Load data for the section
     switch(section) {
