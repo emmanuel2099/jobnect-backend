@@ -65,12 +65,14 @@ class SubscriptionService:
             # Check trial limits
             if trial_sub.jobs_posted >= 3:
                 plan_needed = "high" if job_tier == "high" else "low"
+                # Company pricing: Low ₦10,000, High ₦20,000
+                amount = 20000 if job_tier == "high" else 10000
                 return {
                     "allowed": False,
                     "reason": "Free trial limit reached (3 jobs). Please subscribe to continue posting.",
                     "requires_payment": True,
                     "plan_needed": plan_needed,
-                    "amount": 8000 if job_tier == "high" else 3000
+                    "amount": amount
                 }
             
             # Allow posting and increment counter
@@ -98,7 +100,7 @@ class SubscriptionService:
                 "reason": "Your current subscription doesn't allow posting high-tier jobs. Please upgrade to high-tier subscription.",
                 "requires_payment": True,
                 "plan_needed": "high",
-                "amount": 8000
+                "amount": 20000  # Company high-tier price
             }
         
         return {"allowed": False, "reason": "Unknown error", "requires_payment": False}
@@ -130,12 +132,14 @@ class SubscriptionService:
         if not subscription:
             # No subscription - must pay
             plan_needed = "high" if job_tier == "high" else "low"
+            # Job seeker pricing: Low ₦3,000, High ₦10,000
+            amount = 10000 if job_tier == "high" else 3000
             return {
                 "allowed": False,
                 "reason": f"You need a subscription to apply for jobs. Please subscribe to {'high-tier' if job_tier == 'high' else 'low-tier'} plan.",
                 "requires_payment": True,
                 "plan_needed": plan_needed,
-                "amount": 8000 if job_tier == "high" else 3000
+                "amount": amount
             }
         
         # Has active subscription - check tier
@@ -158,7 +162,7 @@ class SubscriptionService:
                 "reason": "This is a high-tier job. Please upgrade to high-tier subscription to apply.",
                 "requires_payment": True,
                 "plan_needed": "high",
-                "amount": 8000
+                "amount": 10000  # Job seeker high-tier price
             }
         
         return {"allowed": False, "reason": "Unknown error", "requires_payment": False}

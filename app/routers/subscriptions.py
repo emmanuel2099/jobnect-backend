@@ -108,6 +108,14 @@ def initiate_payment(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     
+    # Apply pricing based on user type
+    # Job Seekers: Low ₦3,000, High ₦10,000
+    # Companies: Low ₦10,000, High ₦20,000
+    if current_user.user_type == "company":
+        amount = 20000.0 if plan.tier == "high" else 10000.0
+    else:  # applicant
+        amount = 10000.0 if plan.tier == "high" else 3000.0
+    
     # Generate transaction reference
     transaction_ref = f"SUB-{uuid.uuid4().hex[:12].upper()}"
     
@@ -115,7 +123,7 @@ def initiate_payment(
     from app.flutterwave_service import flutterwave_service
     
     payment_result = flutterwave_service.initialize_payment(
-        amount=plan.price,
+        amount=amount,
         email=current_user.email,
         phone=current_user.phone,
         name=current_user.name,
@@ -131,7 +139,7 @@ def initiate_payment(
     payment = Payment(
         user_id=current_user.id,
         subscription_id=None,  # Will be set after verification
-        amount=plan.price,
+        amount=amount,
         currency="NGN",
         payment_method=request.payment_method,
         transaction_reference=transaction_ref,
@@ -145,7 +153,7 @@ def initiate_payment(
         "success": True,
         "transaction_reference": transaction_ref,
         "payment_link": payment_result.get("payment_link"),
-        "amount": plan.price,
+        "amount": amount,
         "currency": "NGN",
         "plan_name": plan.name,
         "flutterwave_public_key": flutterwave_service.public_key,
