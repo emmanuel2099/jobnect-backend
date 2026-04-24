@@ -272,6 +272,22 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
         print(f"\n🔍 CREATE JOB: User {current_user.id} ({current_user.name}) creating job")
         print(f"   Received company_id: {data.company_id}")
         
+        # Check subscription before allowing job posting
+        from app.subscription_service import SubscriptionService
+        
+        if data.category_id:
+            access_check = SubscriptionService.can_post_job(db, current_user.id, data.category_id)
+            if not access_check["allowed"]:
+                return {
+                    "success": False,
+                    "message": access_check["reason"],
+                    "requires_payment": access_check.get("requires_payment", False),
+                    "plan_needed": access_check.get("plan_needed"),
+                    "amount": access_check.get("amount"),
+                    "data": {}
+                }
+            print(f"   ✅ Subscription check passed: {access_check['reason']}")
+        
         # First, try to find company by user_id (in case app sent user_id instead of company_id)
         company = db.query(Company).filter(Company.user_id == current_user.id).first()
         

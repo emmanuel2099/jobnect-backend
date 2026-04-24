@@ -17,6 +17,21 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
     try:
         print(f"📝 Job application request - User: {current_user.id}, Job: {data.job_id}")
         
+        # Check subscription before allowing application
+        from app.subscription_service import SubscriptionService
+        
+        access_check = SubscriptionService.can_apply_to_job(db, current_user.id, data.job_id)
+        if not access_check["allowed"]:
+            return {
+                "success": False,
+                "message": access_check["reason"],
+                "requires_payment": access_check.get("requires_payment", False),
+                "plan_needed": access_check.get("plan_needed"),
+                "amount": access_check.get("amount"),
+                "data": {}
+            }
+        print(f"   ✅ Subscription check passed: {access_check['reason']}")
+        
         # Check if job exists
         job = db.query(Job).filter(Job.id == data.job_id).first()
         if not job:

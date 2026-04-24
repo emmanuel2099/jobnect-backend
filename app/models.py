@@ -187,6 +187,7 @@ class JobCategory(Base):
     name = Column(String(255), nullable=False)
     icon = Column(Text)
     description = Column(Text)
+    tier = Column(String(50), default="low")  # "low" or "high" - determines subscription requirement
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -387,6 +388,56 @@ class AppSlider(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+# Subscription Plan Model
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)  # "Low Tier" or "High Tier"
+    tier = Column(String(50), nullable=False)  # "low" or "high"
+    price = Column(Float, nullable=False)  # 3000 or 8000
+    duration_months = Column(Integer, default=2)  # 2 months
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    subscriptions = relationship("Subscription", back_populates="plan")
+
+# User Subscription Model
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    plan_id = Column(Integer, ForeignKey("subscription_plans.id", ondelete="CASCADE"))
+    status = Column(String(50), default="active")  # active, expired, cancelled
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    is_trial = Column(Boolean, default=False)
+    jobs_posted = Column(Integer, default=0)  # For trial tracking
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+    payments = relationship("Payment", back_populates="subscription", cascade="all, delete-orphan")
+
+# Payment Model
+class Payment(Base):
+    __tablename__ = "payments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    subscription_id = Column(Integer, ForeignKey("subscriptions.id", ondelete="CASCADE"))
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="NGN")
+    payment_method = Column(String(50))  # card, bank_transfer, etc.
+    transaction_reference = Column(String(255), unique=True)
+    status = Column(String(50), default="pending")  # pending, completed, failed
+    payment_date = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    subscription = relationship("Subscription", back_populates="payments")
 
 # Conversation Model
 class Conversation(Base):
