@@ -1,39 +1,39 @@
 const API = '/api/v10';
-let currentFilter = 'all';
+let currentUserFilter = 'all';
 
-// Show/Hide Sections
-function showSection(section, event) {
+// Show Section
+function showSection(sectionName) {
     // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     
     // Show selected section
-    const targetSection = document.getElementById(section);
-    if (targetSection) {
-        targetSection.classList.add('active');
+    const section = document.getElementById(sectionName);
+    if (section) {
+        section.classList.add('active');
     }
     
-    // Update nav items
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if (event && event.target) {
-        event.target.closest('.nav-item').classList.add('active');
-    }
+    // Update nav links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    event.target.closest('.nav-link').classList.add('active');
     
-    // Load data for the section
-    switch(section) {
+    // Load data for section
+    switch(sectionName) {
+        case 'dashboard':
+            loadDashboardStats();
+            break;
         case 'users':
             loadUsers();
             break;
         case 'jobs':
             loadJobs();
             break;
-        case 'companies':
-            loadCompanies();
-            break;
         case 'applications':
             loadApplications();
             break;
-        case 'notifications':
-            loadNotifications();
+        case 'payments':
+            loadPayments();
             break;
         case 'chat':
             loadChat();
@@ -41,51 +41,70 @@ function showSection(section, event) {
         case 'categories':
             loadCategories();
             break;
-        case 'recommended':
-            loadRecommendedJobs();
+        case 'saved':
+            loadSavedJobs();
+            break;
+        case 'profiles':
+            loadProfiles();
+            break;
+        case 'notifications':
+            loadNotifications();
             break;
     }
 }
 
-// Load All Data
-async function loadAllData() {
-    await Promise.all([
-        loadUserStats(),
-        loadUsers(),
-        loadJobs(),
-        loadCompanies(),
-        loadApplications(),
-        loadNotifications(),
-        loadChat(),
-        loadCategories(),
-        loadRecommendedJobs()
-    ]);
-}
-
-// Load User Statistics
-async function loadUserStats() {
+// Load Dashboard Stats
+async function loadDashboardStats() {
     try {
-        const response = await fetch(`${API}/admin/users/stats`);
-        const data = await response.json();
+        // Load user stats
+        const userStatsRes = await fetch(`${API}/admin/users/stats`);
+        const userStats = await userStatsRes.json();
         
-        if (data.success) {
-            document.getElementById('totalUsers').textContent = data.data.totalUsers;
-            document.getElementById('totalApplicants').textContent = data.data.applicants;
-            document.getElementById('totalCompanies').textContent = data.data.companies;
-            document.getElementById('onlineUsers').textContent = data.data.onlineUsers;
-            document.getElementById('activeUsers').textContent = data.data.activeUsers;
+        if (userStats.success) {
+            document.getElementById('totalUsers').textContent = userStats.data.totalUsers;
+            document.getElementById('totalApplicants').textContent = userStats.data.applicants;
+            document.getElementById('totalCompanies').textContent = userStats.data.companies;
+            document.getElementById('onlineUsers').textContent = userStats.data.onlineUsers;
+        }
+        
+        // Load jobs count
+        const jobsRes = await fetch(`${API}/jobs/recent`);
+        const jobsData = await jobsRes.json();
+        if (jobsData.success && jobsData.data.jobs) {
+            document.getElementById('totalJobs').textContent = jobsData.data.jobs.length;
+        }
+        
+        // Load applications count
+        const appsRes = await fetch(`${API}/admin/applications`);
+        const appsData = await appsRes.json();
+        if (appsData.success && appsData.data.applications) {
+            document.getElementById('totalApplications').textContent = appsData.data.applications.length;
+        }
+        
+        // Load conversations count
+        const chatRes = await fetch(`${API}/admin/chat/conversations`);
+        const chatData = await chatRes.json();
+        if (chatData.success && chatData.data.conversations) {
+            document.getElementById('totalConversations').textContent = chatData.data.conversations.length;
+        }
+        
+        // Load payments count
+        const paymentsRes = await fetch(`${API}/admin/payments`);
+        const paymentsData = await paymentsRes.json();
+        if (paymentsData.success && paymentsData.data.payments) {
+            document.getElementById('totalPayments').textContent = paymentsData.data.payments.length;
         }
     } catch (error) {
-        console.error('Error loading user stats:', error);
+        console.error('Error loading dashboard stats:', error);
     }
 }
 
 // Filter Users
 function filterUsers(type) {
-    currentFilter = type;
+    currentUserFilter = type;
     
     // Update button states
-    const buttons = document.querySelectorAll('.filter-btn');
+    const buttons = document.querySelectorAll('.btn-group .btn');
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
@@ -95,14 +114,12 @@ function filterUsers(type) {
 // Load Users
 async function loadUsers() {
     const container = document.getElementById('usersTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading users...</p></div>';
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading users...</p></div>';
     
     try {
         let url = `${API}/admin/users`;
-        if (currentFilter === 'applicant' || currentFilter === 'company') {
-            url += `?user_type=${currentFilter}`;
-        } else if (currentFilter === 'online') {
-            url += `?is_online=true`;
+        if (currentUserFilter !== 'all') {
+            url += `?user_type=${currentUserFilter}`;
         }
         
         const response = await fetch(url);
@@ -110,253 +127,460 @@ async function loadUsers() {
         
         if (data.success && data.data.users.length > 0) {
             container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Online</th>
-                            <th>Last Login</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.users.map(user => `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
                             <tr>
-                                <td>${user.id}</td>
-                                <td><strong>${user.name}</strong></td>
-                                <td>${user.email}</td>
-                                <td>${user.phone || 'N/A'}</td>
-                                <td><span class="badge ${user.userType === 'company' ? 'badge-info' : 'badge-warning'}">${user.userType}</span></td>
-                                <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
-                                <td><span class="badge ${user.isOnline ? 'badge-online' : 'badge-offline'}">${user.isOnline ? 'Online' : 'Offline'}</span></td>
-                                <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${user.id})" title="Toggle Status">
-                                        <span class="material-symbols-outlined" style="font-size: 16px;">toggle_on</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})" title="Delete User">
-                                        <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
-                                    </button>
-                                </td>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${data.data.users.map(user => `
+                                <tr>
+                                    <td>${user.id}</td>
+                                    <td><strong>${user.name}</strong></td>
+                                    <td>${user.email}</td>
+                                    <td>${user.phone || 'N/A'}</td>
+                                    <td><span class="badge bg-${user.userType === 'company' ? 'info' : 'warning'}">${user.userType}</span></td>
+                                    <td><span class="badge bg-${user.isActive ? 'success' : 'danger'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                                    <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${user.id})" title="Toggle Status">
+                                            <i class="bi bi-toggle-on"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         } else {
-            container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">group</span><p>No users found</p></div>';
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-people"></i><p>No users found</p></div>';
         }
     } catch (error) {
         console.error('Error loading users:', error);
-        container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">error</span><p>Error loading users</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading users</p></div>';
     }
 }
 
 // Load Jobs
 async function loadJobs() {
     const container = document.getElementById('jobsTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading jobs...</div>';
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading jobs...</p></div>';
     
     try {
         const response = await fetch(`${API}/jobs/recent`);
         const data = await response.json();
         
         if (data.success && data.data.jobs && data.data.jobs.length > 0) {
-            document.getElementById('totalJobs').textContent = data.data.jobs.length;
-            
             container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>Company</th>
-                            <th>Location</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.jobs.map(job => `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
                             <tr>
-                                <td>${job.id}</td>
-                                <td><strong>${job.title}</strong></td>
-                                <td>${job.company?.name || 'N/A'}</td>
-                                <td>${job.location || 'N/A'}</td>
-                                <td>${job.jobType?.name || 'N/A'}</td>
-                                <td><span class="badge ${job.isActive ? 'badge-success' : 'badge-danger'}">${job.isActive ? 'Active' : 'Closed'}</span></td>
-                                <td>${new Date(job.createdAt).toLocaleDateString()}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning" onclick="toggleJobStatus(${job.id})">
-                                        <i class="fas fa-toggle-on"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Location</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${data.data.jobs.map(job => `
+                                <tr>
+                                    <td>${job.id}</td>
+                                    <td><strong>${job.title}</strong></td>
+                                    <td>${job.company?.name || 'N/A'}</td>
+                                    <td>${job.location || 'N/A'}</td>
+                                    <td>${job.jobType?.name || 'N/A'}</td>
+                                    <td><span class="badge bg-${job.isActive ? 'success' : 'danger'}">${job.isActive ? 'Active' : 'Closed'}</span></td>
+                                    <td>${new Date(job.createdAt).toLocaleDateString()}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="toggleJobStatus(${job.id})">
+                                            <i class="bi bi-toggle-on"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-briefcase"></i><p>No jobs found</p></div>';
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-briefcase"></i><p>No jobs found</p></div>';
         }
     } catch (error) {
         console.error('Error loading jobs:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading jobs</p></div>';
-    }
-}
-
-// Load Companies
-async function loadCompanies() {
-    const container = document.getElementById('companiesTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading companies...</div>';
-    
-    try {
-        const response = await fetch(`${API}/companies`);
-        const data = await response.json();
-        
-        if (data.success && data.data.companies && data.data.companies.length > 0) {
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Industry</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.companies.map(company => `
-                            <tr>
-                                <td>${company.id}</td>
-                                <td><strong>${company.name}</strong></td>
-                                <td>${company.industry || 'N/A'}</td>
-                                <td>${company.location || 'N/A'}</td>
-                                <td><span class="badge ${company.isActive ? 'badge-success' : 'badge-danger'}">${company.isActive ? 'Active' : 'Inactive'}</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteCompany(${company.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><p>No companies found</p></div>';
-        }
-    } catch (error) {
-        console.error('Error loading companies:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading companies</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading jobs</p></div>';
     }
 }
 
 // Load Applications
 async function loadApplications() {
     const container = document.getElementById('applicationsTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading applications...</div>';
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading applications...</p></div>';
     
     try {
         const response = await fetch(`${API}/admin/applications`);
         const data = await response.json();
         
         if (data.success && data.data.applications.length > 0) {
-            document.getElementById('totalApplications').textContent = data.data.applications.length;
-            
             container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Applicant</th>
-                            <th>Email</th>
-                            <th>Job</th>
-                            <th>Status</th>
-                            <th>Applied Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.applications.map(app => `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
                             <tr>
-                                <td>${app.id}</td>
-                                <td><strong>${app.userName}</strong></td>
-                                <td>${app.userEmail}</td>
-                                <td>${app.jobTitle}</td>
-                                <td><span class="badge badge-info">${app.status}</span></td>
-                                <td>${new Date(app.createdAt).toLocaleDateString()}</td>
+                                <th>ID</th>
+                                <th>Applicant</th>
+                                <th>Email</th>
+                                <th>Job</th>
+                                <th>Status</th>
+                                <th>Applied Date</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${data.data.applications.map(app => `
+                                <tr>
+                                    <td>${app.id}</td>
+                                    <td><strong>${app.userName}</strong></td>
+                                    <td>${app.userEmail}</td>
+                                    <td>${app.jobTitle}</td>
+                                    <td><span class="badge bg-info">${app.status}</span></td>
+                                    <td>${new Date(app.createdAt).toLocaleDateString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-file-alt"></i><p>No applications found</p></div>';
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-file-earmark-text"></i><p>No applications found</p></div>';
         }
     } catch (error) {
         console.error('Error loading applications:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading applications</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading applications</p></div>';
+    }
+}
+
+// Load Payments
+async function loadPayments() {
+    const container = document.getElementById('paymentsTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading payments...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/payments`);
+        const data = await response.json();
+        
+        if (data.success && data.data.payments.length > 0) {
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Amount</th>
+                                <th>Currency</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.payments.map(payment => `
+                                <tr>
+                                    <td>${payment.id}</td>
+                                    <td>${payment.userName}</td>
+                                    <td><strong>${payment.amount}</strong></td>
+                                    <td>${payment.currency}</td>
+                                    <td>${payment.paymentMethod}</td>
+                                    <td>${payment.transactionReference}</td>
+                                    <td><span class="badge bg-${payment.status === 'completed' ? 'success' : 'warning'}">${payment.status}</span></td>
+                                    <td>${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading payments:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading payments</p></div>';
+    }
+}
+
+// Load Chat
+async function loadChat() {
+    const container = document.getElementById('chatTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading conversations...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/chat/conversations`);
+        const data = await response.json();
+        
+        if (data.success && data.data.conversations.length > 0) {
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User 1</th>
+                                <th>User 2</th>
+                                <th>Messages</th>
+                                <th>Last Message</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.conversations.map(conv => `
+                                <tr>
+                                    <td>${conv.id}</td>
+                                    <td>${conv.user1.name} <span class="badge bg-secondary">${conv.user1.userType}</span></td>
+                                    <td>${conv.user2.name} <span class="badge bg-secondary">${conv.user2.userType}</span></td>
+                                    <td><span class="badge bg-info">${conv.messageCount}</span></td>
+                                    <td>${conv.lastMessage ? conv.lastMessage.substring(0, 50) + '...' : 'No messages'}</td>
+                                    <td>${new Date(conv.createdAt).toLocaleDateString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-chat-dots"></i><p>No conversations found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading chat:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading conversations</p></div>';
+    }
+}
+
+// Load Categories
+async function loadCategories() {
+    const container = document.getElementById('categoriesTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading categories...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/categories/manage`);
+        const data = await response.json();
+        
+        if (data.success && data.data.categories.length > 0) {
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Icon</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.categories.map(cat => `
+                                <tr>
+                                    <td>${cat.id}</td>
+                                    <td><strong>${cat.name}</strong></td>
+                                    <td><i class="bi ${cat.icon}"></i> ${cat.icon}</td>
+                                    <td>${cat.description || 'N/A'}</td>
+                                    <td><span class="badge bg-${cat.isActive ? 'success' : 'danger'}">${cat.isActive ? 'Active' : 'Inactive'}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-tags"></i><p>No categories found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading categories</p></div>';
+    }
+}
+
+// Load Saved Jobs
+async function loadSavedJobs() {
+    const container = document.getElementById('savedTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading saved jobs...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/saved-jobs`);
+        const data = await response.json();
+        
+        if (data.success && data.data.savedJobs.length > 0) {
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Job Title</th>
+                                <th>Company</th>
+                                <th>Saved Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.savedJobs.map(saved => `
+                                <tr>
+                                    <td>${saved.id}</td>
+                                    <td><strong>${saved.userName}</strong></td>
+                                    <td>${saved.userEmail}</td>
+                                    <td>${saved.jobTitle}</td>
+                                    <td>${saved.companyName}</td>
+                                    <td>${new Date(saved.savedAt).toLocaleDateString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-bookmark"></i><p>No saved jobs found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading saved jobs:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading saved jobs</p></div>';
+    }
+}
+
+// Load Profiles
+async function loadProfiles() {
+    const container = document.getElementById('profilesTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading profiles...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/users/profiles/all`);
+        const data = await response.json();
+        
+        if (data.success && data.data.profiles.length > 0) {
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Photo</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Type</th>
+                                <th>Designation</th>
+                                <th>City</th>
+                                <th>Age</th>
+                                <th>Skills</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.data.profiles.map(profile => `
+                                <tr>
+                                    <td>${profile.id}</td>
+                                    <td>
+                                        ${profile.profilePhoto ? 
+                                            `<img src="${profile.profilePhoto}" alt="${profile.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : 
+                                            '<i class="bi bi-person-circle" style="font-size: 40px;"></i>'
+                                        }
+                                    </td>
+                                    <td><strong>${profile.name}</strong></td>
+                                    <td>${profile.email}</td>
+                                    <td><span class="badge bg-${profile.userType === 'company' ? 'info' : 'warning'}">${profile.userType}</span></td>
+                                    <td>${profile.designation || 'N/A'}</td>
+                                    <td>${profile.city || 'N/A'}</td>
+                                    <td>${profile.age || 'N/A'}</td>
+                                    <td><span class="badge bg-secondary">${profile.skillsCount} skills</span></td>
+                                    <td><span class="badge bg-${profile.isActive ? 'success' : 'danger'}">${profile.isActive ? 'Active' : 'Inactive'}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-person-badge"></i><p>No profiles found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading profiles:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading profiles</p></div>';
     }
 }
 
 // Load Notifications
 async function loadNotifications() {
     const container = document.getElementById('notificationsTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading notifications...</div>';
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading notifications...</p></div>';
     
     try {
         const response = await fetch(`${API}/admin/notifications`);
         const data = await response.json();
         
         if (data.success && data.data.notifications.length > 0) {
-            document.getElementById('totalNotifications').textContent = data.data.notifications.length;
-            
             container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>User</th>
-                            <th>Title</th>
-                            <th>Message</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Sent</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.notifications.map(notif => `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
                             <tr>
-                                <td>${notif.id}</td>
-                                <td>${notif.userName}</td>
-                                <td><strong>${notif.title}</strong></td>
-                                <td>${notif.message.substring(0, 50)}...</td>
-                                <td><span class="badge badge-info">${notif.type}</span></td>
-                                <td><span class="badge ${notif.isRead ? 'badge-success' : 'badge-warning'}">${notif.isRead ? 'Read' : 'Unread'}</span></td>
-                                <td>${new Date(notif.createdAt).toLocaleString()}</td>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Title</th>
+                                <th>Message</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Sent</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${data.data.notifications.map(notif => `
+                                <tr>
+                                    <td>${notif.id}</td>
+                                    <td>${notif.userName}</td>
+                                    <td><strong>${notif.title}</strong></td>
+                                    <td>${notif.message.substring(0, 50)}...</td>
+                                    <td><span class="badge bg-info">${notif.type}</span></td>
+                                    <td><span class="badge bg-${notif.isRead ? 'success' : 'warning'}">${notif.isRead ? 'Read' : 'Unread'}</span></td>
+                                    <td>${new Date(notif.createdAt).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-bell"></i><p>No notifications sent yet</p></div>';
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-bell"></i><p>No notifications sent yet</p></div>';
         }
     } catch (error) {
         console.error('Error loading notifications:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading notifications</p></div>';
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading notifications</p></div>';
     }
 }
 
@@ -371,7 +595,7 @@ async function deleteUser(id) {
         if (data.success) {
             alert('User deleted successfully');
             loadUsers();
-            loadUserStats();
+            loadDashboardStats();
         } else {
             alert('Failed to delete user');
         }
@@ -389,7 +613,7 @@ async function toggleUserStatus(id) {
         
         if (data.success) {
             loadUsers();
-            loadUserStats();
+            loadDashboardStats();
         } else {
             alert('Failed to toggle user status');
         }
@@ -410,6 +634,7 @@ async function deleteJob(id) {
         if (data.success) {
             alert('Job deleted successfully');
             loadJobs();
+            loadDashboardStats();
         } else {
             alert('Failed to delete job');
         }
@@ -436,261 +661,46 @@ async function toggleJobStatus(id) {
     }
 }
 
-// Delete Company
-async function deleteCompany(id) {
-    if (!confirm('Are you sure you want to delete this company?')) return;
+// Save Category
+async function saveCategory() {
+    const name = document.getElementById('categoryName').value;
+    const icon = document.getElementById('categoryIcon').value;
+    const description = document.getElementById('categoryDescription').value;
     
-    try {
-        const response = await fetch(`${API}/admin/companies/${id}`, { method: 'DELETE' });
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('Company deleted successfully');
-            loadCompanies();
-        } else {
-            alert('Failed to delete company');
-        }
-    } catch (error) {
-        console.error('Error deleting company:', error);
-        alert('Error deleting company');
+    if (!name) {
+        alert('Please enter category name');
+        return;
     }
-}
-
-// Show Notification Modal
-function showNotificationModal() {
-    document.getElementById('notificationModal').classList.add('active');
-}
-
-// Close Notification Modal
-function closeNotificationModal() {
-    document.getElementById('notificationModal').classList.remove('active');
-    document.getElementById('notificationForm').reset();
-}
-
-// Send Notification
-async function sendNotification(event) {
-    event.preventDefault();
-    
-    const target = document.getElementById('notifTarget').value;
-    const title = document.getElementById('notifTitle').value;
-    const message = document.getElementById('notifMessage').value;
-    const type = document.getElementById('notifType').value;
     
     try {
-        const response = await fetch(`${API}/admin/notifications/send`, {
+        const response = await fetch(`${API}/admin/categories/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                user_type: target,
-                title: title,
-                message: message,
-                notification_type: type
+                name: name,
+                icon: icon,
+                description: description,
+                is_active: true
             })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            alert(`Notification sent to ${data.data.recipientCount} user(s)`);
-            closeNotificationModal();
-            loadNotifications();
-        } else {
-            alert('Failed to send notification');
-        }
-    } catch (error) {
-        console.error('Error sending notification:', error);
-        alert('Error sending notification');
-    }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadAllData();
-    setInterval(loadUserStats, 30000); // Refresh stats every 30 seconds
-});
-
-
-// ============ CHAT MANAGEMENT ============
-async function loadChat() {
-    const container = document.getElementById('chatTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading conversations...</div>';
-    
-    try {
-        const response = await fetch(`${API}/chat/conversations`);
-        const data = await response.json();
-        
-        if (data.success && data.data.conversations && data.data.conversations.length > 0) {
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>User 1</th>
-                            <th>User 2</th>
-                            <th>Last Message</th>
-                            <th>Unread Count</th>
-                            <th>Created</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.conversations.map(conv => `
-                            <tr>
-                                <td>${conv.id}</td>
-                                <td>${conv.user1Name || 'User ' + conv.user1Id}</td>
-                                <td>${conv.user2Name || 'User ' + conv.user2Id}</td>
-                                <td>${conv.lastMessage ? conv.lastMessage.substring(0, 50) + '...' : 'No messages'}</td>
-                                <td><span class="badge badge-info">${conv.unreadCount || 0}</span></td>
-                                <td>${new Date(conv.createdAt).toLocaleDateString()}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-comments"></i><p>No conversations found</p></div>';
-        }
-    } catch (error) {
-        console.error('Error loading chat:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading conversations</p></div>';
-    }
-}
-
-// ============ CATEGORY MANAGEMENT ============
-async function loadCategories() {
-    const container = document.getElementById('categoriesTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading categories...</div>';
-    
-    try {
-        const response = await fetch(`${API}/admin/categories/manage`);
-        const data = await response.json();
-        
-        if (data.success && data.data.categories && data.data.categories.length > 0) {
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Icon</th>
-                            <th>Description</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.categories.map(cat => `
-                            <tr>
-                                <td>${cat.id}</td>
-                                <td><strong>${cat.name}</strong></td>
-                                <td><i class="fas ${cat.icon}"></i> ${cat.icon}</td>
-                                <td>${cat.description || 'N/A'}</td>
-                                <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'Active' : 'Inactive'}</span></td>
-                                <td>${new Date(cat.createdAt).toLocaleDateString()}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-tags"></i><p>No categories found</p></div>';
-        }
-    } catch (error) {
-        console.error('Error loading categories:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading categories</p></div>';
-    }
-}
-
-function showCategoryModal() {
-    document.getElementById('categoryModalTitle').textContent = 'Add Category';
-    document.getElementById('categoryForm').reset();
-    document.getElementById('categoryId').value = '';
-    document.getElementById('categoryModal').classList.add('active');
-}
-
-function closeCategoryModal() {
-    document.getElementById('categoryModal').classList.remove('active');
-    document.getElementById('categoryForm').reset();
-}
-
-async function editCategory(id) {
-    try {
-        const response = await fetch(`${API}/admin/categories/manage`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const category = data.data.categories.find(c => c.id === id);
-            if (category) {
-                document.getElementById('categoryModalTitle').textContent = 'Edit Category';
-                document.getElementById('categoryId').value = category.id;
-                document.getElementById('categoryName').value = category.name;
-                document.getElementById('categoryIcon').value = category.icon || '';
-                document.getElementById('categoryDescription').value = category.description || '';
-                document.getElementById('categoryModal').classList.add('active');
-            }
-        }
-    } catch (error) {
-        console.error('Error loading category:', error);
-        alert('Error loading category');
-    }
-}
-
-async function saveCategory(event) {
-    event.preventDefault();
-    
-    const id = document.getElementById('categoryId').value;
-    const name = document.getElementById('categoryName').value;
-    const icon = document.getElementById('categoryIcon').value;
-    const description = document.getElementById('categoryDescription').value;
-    
-    const categoryData = {
-        name: name,
-        icon: icon,
-        description: description,
-        is_active: true
-    };
-    
-    try {
-        let response;
-        if (id) {
-            // Update existing category
-            response = await fetch(`${API}/admin/categories/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoryData)
-            });
-        } else {
-            // Create new category
-            response = await fetch(`${API}/admin/categories/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoryData)
-            });
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert(id ? 'Category updated successfully' : 'Category created successfully');
-            closeCategoryModal();
+            alert('Category created successfully');
+            bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+            document.getElementById('categoryForm').reset();
             loadCategories();
         } else {
-            alert('Failed to save category');
+            alert('Failed to create category');
         }
     } catch (error) {
-        console.error('Error saving category:', error);
-        alert('Error saving category');
+        console.error('Error creating category:', error);
+        alert('Error creating category');
     }
 }
 
+// Delete Category
 async function deleteCategory(id) {
     if (!confirm('Are you sure you want to delete this category?')) return;
     
@@ -710,69 +720,46 @@ async function deleteCategory(id) {
     }
 }
 
-// ============ RECOMMENDED JOBS MANAGEMENT ============
-async function loadRecommendedJobs() {
-    const container = document.getElementById('recommendedTable');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading jobs...</div>';
+// Send Notification
+async function sendNotification() {
+    const target = document.getElementById('notifTarget').value;
+    const title = document.getElementById('notifTitle').value;
+    const message = document.getElementById('notifMessage').value;
+    
+    if (!title || !message) {
+        alert('Please fill in all fields');
+        return;
+    }
     
     try {
-        const response = await fetch(`${API}/admin/jobs/recommended/manage`);
-        const data = await response.json();
+        const response = await fetch(`${API}/admin/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_type: target,
+                title: title,
+                message: message,
+                notification_type: 'general'
+            })
+        });
         
-        if (data.success && data.data.jobs && data.data.jobs.length > 0) {
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Recommended</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.data.jobs.map(job => `
-                            <tr>
-                                <td>${job.id}</td>
-                                <td><strong>${job.title}</strong></td>
-                                <td>${job.location || 'N/A'}</td>
-                                <td><span class="badge ${job.isActive ? 'badge-success' : 'badge-danger'}">${job.isActive ? 'Active' : 'Closed'}</span></td>
-                                <td><span class="badge ${job.isRecommended ? 'badge-success' : 'badge-warning'}">${job.isRecommended ? 'Yes' : 'No'}</span></td>
-                                <td>${new Date(job.createdAt).toLocaleDateString()}</td>
-                                <td>
-                                    <button class="btn btn-sm ${job.isRecommended ? 'btn-warning' : 'btn-success'}" onclick="toggleRecommended(${job.id})">
-                                        <i class="fas fa-star"></i> ${job.isRecommended ? 'Remove' : 'Add'}
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        } else {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-briefcase"></i><p>No jobs found</p></div>';
-        }
-    } catch (error) {
-        console.error('Error loading recommended jobs:', error);
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading jobs</p></div>';
-    }
-}
-
-async function toggleRecommended(id) {
-    try {
-        const response = await fetch(`${API}/admin/jobs/${id}/toggle-recommended`, { method: 'PATCH' });
         const data = await response.json();
         
         if (data.success) {
-            loadRecommendedJobs();
+            alert(`Notification sent to ${data.data.recipientCount} user(s)`);
+            bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide();
+            document.getElementById('notificationForm').reset();
+            loadNotifications();
         } else {
-            alert('Failed to toggle recommended status');
+            alert('Failed to send notification');
         }
     } catch (error) {
-        console.error('Error toggling recommended:', error);
-        alert('Error toggling recommended status');
+        console.error('Error sending notification:', error);
+        alert('Error sending notification');
     }
 }
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardStats();
+});
