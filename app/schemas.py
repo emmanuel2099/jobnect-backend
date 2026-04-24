@@ -47,6 +47,7 @@ class PersonalInfoUpdate(BaseModel):
     father_name: Optional[str]
     mother_name: Optional[str]
     date_of_birth: Optional[date]
+    age: Optional[int]  # Age field for Google Play compliance
     gender: Optional[str]
     religion: Optional[str]
     marital_status: Optional[str]

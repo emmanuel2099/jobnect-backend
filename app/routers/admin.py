@@ -109,6 +109,48 @@ async def toggle_user_status(user_id: int, db: Session = Depends(get_db)):
         "data": {"isActive": user.is_active}
     }
 
+@router.patch("/users/{user_id}/deactivate")
+async def deactivate_user_account(user_id: int, db: Session = Depends(get_db)):
+    """Permanently deactivate a user account"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"success": False, "message": "User not found", "data": {}}
+    
+    user.is_deactivated = True
+    user.is_active = False
+    user.deactivated_at = datetime.utcnow()
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "User account deactivated successfully",
+        "data": {
+            "isDeactivated": user.is_deactivated,
+            "deactivatedAt": user.deactivated_at.isoformat() if user.deactivated_at else None
+        }
+    }
+
+@router.patch("/users/{user_id}/reactivate")
+async def reactivate_user_account(user_id: int, db: Session = Depends(get_db)):
+    """Reactivate a deactivated user account"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"success": False, "message": "User not found", "data": {}}
+    
+    user.is_deactivated = False
+    user.is_active = True
+    user.deactivated_at = None
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "User account reactivated successfully",
+        "data": {
+            "isDeactivated": user.is_deactivated,
+            "isActive": user.is_active
+        }
+    }
+
 # Job Management
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: int, db: Session = Depends(get_db)):
@@ -534,9 +576,11 @@ async def get_all_user_profiles(
             "profilePhoto": user.profile_photo,
             "designation": resume.designation if resume else None,
             "city": resume.city if resume else None,
+            "age": resume.age if resume else None,
             "skills": skills,
             "skillsCount": len(skills),
             "isActive": user.is_active,
+            "isDeactivated": user.is_deactivated,
             "createdAt": user.created_at.isoformat() if user.created_at else None
         })
     
@@ -546,5 +590,114 @@ async def get_all_user_profiles(
         "data": {
             "total": len(profiles),
             "profiles": profiles
+        }
+    }
+
+@router.get("/saved-jobs")
+async def get_all_saved_jobs(db: Session = Depends(get_db)):
+    """Get all saved/bookmarked jobs across all users"""
+    from app.models import Bookmark
+    
+    bookmarks = db.query(Bookmark).order_by(desc(Bookmark.created_at)).all()
+    
+    return {
+        "success": True,
+        "message": f"Found {len(bookmarks)} saved jobs",
+        "data": {
+            "total": len(bookmarks),
+            "savedJobs": [
+                {
+                    "id": bookmark.id,
+                    "userId": bookmark.user_id,
+                    "userName": bookmark.user.name if bookmark.user else "N/A",
+                    "userEmail": bookmark.user.email if bookmark.user else "N/A",
+                    "jobId": bookmark.job_id,
+                    "jobTitle": bookmark.job.title if bookmark.job else "N/A",
+                    "companyName": bookmark.job.company.name if bookmark.job and bookmark.job.company else "N/A",
+                    "savedAt": bookmark.created_at.isoformat() if bookmark.created_at else None
+                }
+                for bookmark in bookmarks
+            ]
+        }
+    }
+
+@router.get("/chat/conversations")
+async def get_all_conversations(db: Session = Depends(get_db)):
+    """Get all chat conversations for admin monitoring"""
+    from app.models import Conversation, Message
+    
+    conversations = db.query(Conversation).order_by(desc(Conversation.updated_at)).all()
+    
+    conv_list = []
+    for conv in conversations:
+        # Get last message
+        last_message = db.query(Message).filter(
+            Message.conversation_id == conv.id
+        ).order_by(desc(Message.created_at)).first()
+        
+        # Get message count
+        message_count = db.query(Message).filter(
+            Message.conversation_id == conv.id
+        ).count()
+        
+        # Get users
+        user1 = db.query(User).filter(User.id == conv.user1_id).first()
+        user2 = db.query(User).filter(User.id == conv.user2_id).first()
+        
+        conv_list.append({
+            "id": conv.id,
+            "user1": {
+                "id": user1.id if user1 else None,
+                "name": user1.name if user1 else "N/A",
+                "userType": user1.user_type if user1 else None
+            },
+            "user2": {
+                "id": user2.id if user2 else None,
+                "name": user2.name if user2 else "N/A",
+                "userType": user2.user_type if user2 else None
+            },
+            "messageCount": message_count,
+            "lastMessage": last_message.message if last_message else None,
+            "lastMessageAt": last_message.created_at.isoformat() if last_message else None,
+            "createdAt": conv.created_at.isoformat() if conv.created_at else None
+        })
+    
+    return {
+        "success": True,
+        "message": f"Found {len(conv_list)} conversations",
+        "data": {
+            "total": len(conv_list),
+            "conversations": conv_list
+        }
+    }
+
+@router.get("/payments")
+async def get_all_payments(db: Session = Depends(get_db)):
+    """Get all payments for admin financial tracking"""
+    from app.models import Payment
+    
+    payments = db.query(Payment).order_by(desc(Payment.created_at)).all()
+    
+    return {
+        "success": True,
+        "message": f"Found {len(payments)} payments",
+        "data": {
+            "total": len(payments),
+            "totalAmount": sum(p.amount for p in payments if p.status == "completed"),
+            "payments": [
+                {
+                    "id": payment.id,
+                    "userId": payment.user_id,
+                    "userName": db.query(User).filter(User.id == payment.user_id).first().name if db.query(User).filter(User.id == payment.user_id).first() else "N/A",
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                    "paymentMethod": payment.payment_method,
+                    "transactionReference": payment.transaction_reference,
+                    "status": payment.status,
+                    "paymentDate": payment.payment_date.isoformat() if payment.payment_date else None,
+                    "createdAt": payment.created_at.isoformat() if payment.created_at else None
+                }
+                for payment in payments
+            ]
         }
     }

@@ -18,6 +18,8 @@ class User(Base):
     profile_photo = Column(Text)
     is_active = Column(Boolean, default=True)
     is_online = Column(Boolean, default=False)
+    is_deactivated = Column(Boolean, default=False)  # Account deactivation status
+    deactivated_at = Column(DateTime)  # When account was deactivated
     last_login = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -41,6 +43,7 @@ class Resume(Base):
     father_name = Column(String(255))
     mother_name = Column(String(255))
     date_of_birth = Column(Date)
+    age = Column(Integer)  # Age field for Google Play compliance
     gender = Column(String(50))
     religion = Column(String(100))
     marital_status = Column(String(50))

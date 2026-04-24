@@ -61,6 +61,7 @@ async def get_resume_details(current_user: User = Depends(get_current_user), db:
                 "father_name": resume.father_name,
                 "mother_name": resume.mother_name,
                 "date_of_birth": str(resume.date_of_birth) if resume.date_of_birth else None,
+                "age": resume.age,
                 "gender": resume.gender,
                 "religion": resume.religion,
                 "marital_status": resume.marital_status,
@@ -186,6 +187,7 @@ async def update_personal_info(data: PersonalInfoUpdate, current_user: User = De
     if data.father_name: resume.father_name = data.father_name
     if data.mother_name: resume.mother_name = data.mother_name
     if data.date_of_birth: resume.date_of_birth = data.date_of_birth
+    if data.age is not None: resume.age = data.age  # Age field for Google Play compliance
     if data.gender: resume.gender = data.gender
     if data.religion: resume.religion = data.religion
     if data.marital_status: resume.marital_status = data.marital_status
