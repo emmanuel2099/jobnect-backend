@@ -16,6 +16,16 @@ async def lifespan(app: FastAPI):
     print("🚀 STARTING JOBNECT BACKEND")
     print("=" * 60)
     
+    # Check if DATABASE_URL is set
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        print("⚠️  WARNING: DATABASE_URL not set. Database operations will fail.")
+        print("✅ API server started (database not configured)")
+        yield
+        return
+    
+    print(f"🔗 Database URL: {database_url[:30]}...")
+    
     print("\n🔄 Step 1: Creating database tables...")
     try:
         # Force create all tables
@@ -75,6 +85,7 @@ async def lifespan(app: FastAPI):
             
     except Exception as e:
         print(f"❌ ERROR creating tables: {e}")
+        print("⚠️  Continuing startup anyway...")
         import traceback
         traceback.print_exc()
     
@@ -96,6 +107,7 @@ async def lifespan(app: FastAPI):
             
     except Exception as e:
         print(f"⚠️  Warning: Could not initialize default data: {e}")
+        print("⚠️  Continuing startup anyway...")
     
     print("\n" + "=" * 60)
     print("✅ BACKEND READY TO ACCEPT REQUESTS")
