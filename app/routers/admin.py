@@ -194,15 +194,30 @@ async def get_user_stats(db: Session = Depends(get_db)):
 # User Management
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """Delete a user"""
+    """Delete a user and invalidate their session immediately"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return {"success": False, "message": "User not found", "data": {}}
     
+    # Store user info before deletion
+    user_email = user.email
+    user_name = user.name
+    
+    # Add to invalidated sessions to force logout
+    db.execute(text("""
+        INSERT INTO invalidated_sessions (user_id, reason) 
+        VALUES (:user_id, 'user_deleted')
+    """), {"user_id": user_id})
+    
+    # Delete the user
     db.delete(user)
     db.commit()
     
-    return {"success": True, "message": "User deleted successfully", "data": {}}
+    return {
+        "success": True, 
+        "message": f"User {user_name} ({user_email}) deleted successfully and logged out immediately", 
+        "data": {"user_id": user_id, "logged_out": True}
+    }
 
 @router.patch("/users/{user_id}/toggle-status")
 async def toggle_user_status(user_id: int, db: Session = Depends(get_db)):
@@ -791,13 +806,14 @@ async def get_all_payments(db: Session = Depends(get_db)):
     
     payments = db.query(Payment).order_by(desc(Payment.created_at)).all()
     
-    # Calculate revenue analytics
-    total_revenue = sum(p.amount for p in payments if p.status == "completed")
+    # Calculate revenue analytics - Only COMPLETED payments
     completed_payments = [p for p in payments if p.status == "completed"]
     pending_payments = [p for p in payments if p.status == "pending"]
     failed_payments = [p for p in payments if p.status == "failed"]
     
-    # Monthly revenue (current month)
+    total_revenue = sum(p.amount for p in completed_payments)  # Only completed
+    
+    # Monthly revenue (current month) - Only completed payments
     current_month = datetime.now().month
     current_year = datetime.now().year
     monthly_revenue = sum(
@@ -805,19 +821,19 @@ async def get_all_payments(db: Session = Depends(get_db)):
         if p.created_at and p.created_at.month == current_month and p.created_at.year == current_year
     )
     
-    # Weekly revenue (last 7 days)
+    # Weekly revenue (last 7 days) - Only completed payments
     week_ago = datetime.now() - timedelta(days=7)
     weekly_revenue = sum(
         p.amount for p in completed_payments 
         if p.created_at and p.created_at >= week_ago
     )
     
-    # Average payment
+    # Average payment - Only completed payments
     average_payment = total_revenue / len(completed_payments) if completed_payments else 0
     
-    # Payment methods breakdown
+    # Payment methods breakdown - Only completed payments
     payment_methods = {}
-    for payment in completed_payments:
+    for payment in completed_payments:  # Only completed payments
         method = payment.payment_method or "Unknown"
         if method not in payment_methods:
             payment_methods[method] = {"count": 0, "amount": 0}
