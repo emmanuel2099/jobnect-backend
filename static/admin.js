@@ -26,6 +26,9 @@ function showSection(sectionName) {
         case 'users':
             loadUsers();
             break;
+        case 'email-verification':
+            loadEmailVerificationStatus();
+            break;
         case 'jobs':
             loadJobs();
             break;
@@ -763,3 +766,240 @@ async function sendNotification() {
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardStats();
 });
+
+// Email Verification Functions
+async function loadEmailVerificationStatus() {
+    try {
+        const response = await fetch(`${API}/admin/email-verification-status`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateEmailVerificationStats(data.data.summary);
+            displayVerifiedUsers(data.data.verified_users);
+            displayUnverifiedUsers(data.data.unverified_users);
+            displayRecentAttempts(data.data.recent_attempts);
+        } else {
+            showError('Failed to load email verification status: ' + data.message);
+        }
+    } catch (error) {
+        showError('Error loading email verification status: ' + error.message);
+    }
+}
+
+function updateEmailVerificationStats(summary) {
+    document.getElementById('totalUsersCount').textContent = summary.total_users;
+    document.getElementById('verifiedUsersCount').textContent = summary.verified_users;
+    document.getElementById('unverifiedUsersCount').textContent = summary.unverified_users;
+    document.getElementById('verificationRate').textContent = summary.verification_rate + '%';
+}
+
+function displayVerifiedUsers(users) {
+    const container = document.getElementById('verifiedUsersTable');
+    
+    if (users.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">No verified users yet</h5>
+                <p class="text-muted">Users will appear here after email verification</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const table = `
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th>Company</th>
+                    <th>Verified Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(user => `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar me-2">
+                                    <i class="bi bi-person-circle text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>${user.name}</strong>
+                                    <br><small class="text-muted">ID: ${user.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-success-subtle text-success">
+                                <i class="bi bi-check-circle-fill me-1"></i>${user.email}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.user_type === 'company' ? 'bg-primary' : 'bg-info'}">
+                                ${user.user_type === 'company' ? 'Company' : 'Job Seeker'}
+                            </span>
+                        </td>
+                        <td>${user.company || 'N/A'}</td>
+                        <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-success" disabled>
+                                <i class="bi bi-check-circle-fill"></i> Verified
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = table;
+}
+
+function displayUnverifiedUsers(users) {
+    const container = document.getElementById('unverifiedUsersTable');
+    
+    if (users.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">All users verified!</h5>
+                <p class="text-muted">Great job! All users have verified their emails</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const table = `
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th>Company</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(user => `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar me-2">
+                                    <i class="bi bi-person-circle text-warning" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>${user.name}</strong>
+                                    <br><small class="text-muted">ID: ${user.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-warning-subtle text-warning">
+                                <i class="bi bi-exclamation-circle-fill me-1"></i>${user.email}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.user_type === 'company' ? 'bg-primary' : 'bg-info'}">
+                                ${user.user_type === 'company' ? 'Company' : 'Job Seeker'}
+                            </span>
+                        </td>
+                        <td>${user.company || 'N/A'}</td>
+                        <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="resendVerificationEmail(${user.id}, '${user.email}')">
+                                <i class="bi bi-envelope-fill"></i> Resend Email
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = table;
+}
+
+function displayRecentAttempts(attempts) {
+    const container = document.getElementById('recentAttemptsTable');
+    
+    if (attempts.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-clock-history text-info" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">No recent attempts</h5>
+                <p class="text-muted">Email verification attempts will appear here</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const table = `
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Purpose</th>
+                    <th>Sent At</th>
+                    <th>Expires At</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${attempts.map(attempt => `
+                    <tr>
+                        <td>${attempt.email}</td>
+                        <td>
+                            <span class="badge ${attempt.purpose === 'email_verification' ? 'bg-info' : 'bg-warning'}">
+                                ${attempt.purpose.replace('_', ' ').toUpperCase()}
+                            </span>
+                        </td>
+                        <td>${attempt.created_at ? new Date(attempt.created_at).toLocaleString() : 'N/A'}</td>
+                        <td>${attempt.expires_at ? new Date(attempt.expires_at).toLocaleString() : 'N/A'}</td>
+                        <td>
+                            <span class="badge ${attempt.status === 'active' ? 'bg-success' : 'bg-secondary'}">
+                                ${attempt.status.toUpperCase()}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = table;
+}
+
+async function resendVerificationEmail(userId, email) {
+    if (!confirm(`Resend verification email to ${email}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API}/admin/resend-verification/${userId}`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(`Verification email sent to ${email}`);
+            // Refresh the email verification status
+            loadEmailVerificationStatus();
+        } else {
+            showError('Failed to send verification email: ' + data.message);
+        }
+    } catch (error) {
+        showError('Error sending verification email: ' + error.message);
+    }
+}
+
+function refreshEmailVerification() {
+    loadEmailVerificationStatus();
+    showSuccess('Email verification status refreshed');
+}

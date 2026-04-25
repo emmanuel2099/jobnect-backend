@@ -220,6 +220,12 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('email-verification'); return false;">
+                    <i class="bi bi-envelope-check-fill"></i>
+                    <span>Email Verification</span>
+                </a>
+            </div>
+            <div class="nav-item">
                 <a href="#" class="nav-link" onclick="showSection('jobs'); return false;">
                     <i class="bi bi-briefcase-fill"></i>
                     <span>Jobs</span>
@@ -379,6 +385,114 @@
                     <div class="loading">
                         <div class="spinner-border text-primary" role="status"></div>
                         <p class="mt-3">Loading users...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Email Verification Section -->
+        <div id="email-verification" class="section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-envelope-check-fill me-2"></i>Email Verification Status</h2>
+                <button class="btn btn-primary" onclick="refreshEmailVerification()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <h3 id="totalUsersCount">0</h3>
+                        <p>Total Users</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <h3 id="verifiedUsersCount">0</h3>
+                        <p>Verified Emails</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="icon" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: white;">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </div>
+                        <h3 id="unverifiedUsersCount">0</h3>
+                        <p>Unverified Emails</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <i class="bi bi-percent"></i>
+                        </div>
+                        <h3 id="verificationRate">0%</h3>
+                        <p>Verification Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-3" id="emailTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="verified-tab" data-bs-toggle="tab" data-bs-target="#verified" type="button" role="tab">
+                        <i class="bi bi-check-circle-fill text-success me-1"></i>Verified Users
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="unverified-tab" data-bs-toggle="tab" data-bs-target="#unverified" type="button" role="tab">
+                        <i class="bi bi-x-circle-fill text-danger me-1"></i>Unverified Users
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="attempts-tab" data-bs-toggle="tab" data-bs-target="#attempts" type="button" role="tab">
+                        <i class="bi bi-clock-history me-1"></i>Recent Attempts
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="emailTabContent">
+                <!-- Verified Users Tab -->
+                <div class="tab-pane fade show active" id="verified" role="tabpanel">
+                    <div class="table-container">
+                        <div id="verifiedUsersTable">
+                            <div class="loading">
+                                <div class="spinner-border text-success" role="status"></div>
+                                <p class="mt-3">Loading verified users...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Unverified Users Tab -->
+                <div class="tab-pane fade" id="unverified" role="tabpanel">
+                    <div class="table-container">
+                        <div id="unverifiedUsersTable">
+                            <div class="loading">
+                                <div class="spinner-border text-warning" role="status"></div>
+                                <p class="mt-3">Loading unverified users...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Attempts Tab -->
+                <div class="tab-pane fade" id="attempts" role="tabpanel">
+                    <div class="table-container">
+                        <div id="recentAttemptsTable">
+                            <div class="loading">
+                                <div class="spinner-border text-info" role="status"></div>
+                                <p class="mt-3">Loading recent attempts...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

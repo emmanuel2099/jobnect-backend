@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -17,6 +17,117 @@ class SendNotificationRequest(BaseModel):
     title: str
     message: str
     notification_type: Optional[str] = "general"
+
+# Email Verification Management
+@router.get("/email-verification-status")
+async def get_email_verification_status(db: Session = Depends(get_db)):
+    """Get email verification status for all users"""
+    try:
+        # Get users with their email verification status
+        users = db.query(User).order_by(desc(User.created_at)).all()
+        
+        verified_users = []
+        unverified_users = []
+        
+        for user in users:
+            user_data = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "company": user.company,
+                "user_type": user.user_type,
+                "email_verified": getattr(user, 'email_verified', False),
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "last_login": user.last_login.isoformat() if hasattr(user, 'last_login') and user.last_login else None
+            }
+            
+            if getattr(user, 'email_verified', False):
+                verified_users.append(user_data)
+            else:
+                unverified_users.append(user_data)
+        
+        # Get recent email verification attempts
+        try:
+            recent_otps = db.execute(
+                text("""
+                    SELECT email, purpose, created_at, expires_at 
+                    FROM email_otps 
+                    WHERE created_at >= NOW() - INTERVAL '7 days'
+                    ORDER BY created_at DESC 
+                    LIMIT 50
+                """)
+            ).fetchall()
+            
+            recent_attempts = [
+                {
+                    "email": row[0],
+                    "purpose": row[1],
+                    "created_at": row[2].isoformat() if row[2] else None,
+                    "expires_at": row[3].isoformat() if row[3] else None,
+                    "status": "expired" if row[3] and row[3] < datetime.utcnow() else "active"
+                }
+                for row in recent_otps
+            ]
+        except Exception as e:
+            recent_attempts = []
+        
+        return {
+            "success": True,
+            "message": "Email verification status retrieved",
+            "data": {
+                "summary": {
+                    "total_users": len(users),
+                    "verified_users": len(verified_users),
+                    "unverified_users": len(unverified_users),
+                    "verification_rate": round((len(verified_users) / len(users)) * 100, 1) if users else 0
+                },
+                "verified_users": verified_users,
+                "unverified_users": unverified_users,
+                "recent_attempts": recent_attempts
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error retrieving email verification status: {str(e)}",
+            "data": {
+                "summary": {"total_users": 0, "verified_users": 0, "unverified_users": 0, "verification_rate": 0},
+                "verified_users": [],
+                "unverified_users": [],
+                "recent_attempts": []
+            }
+        }
+
+@router.post("/resend-verification/{user_id}")
+async def resend_verification_email(user_id: int, db: Session = Depends(get_db)):
+    """Resend verification email to a specific user"""
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Import email service
+        from app.email_service import email_service
+        
+        # Send verification email
+        result = email_service.send_verification_email(
+            email=user.email,
+            name=user.name
+        )
+        
+        return {
+            "success": result["success"],
+            "message": f"Verification email {'sent' if result['success'] else 'failed'} for {user.email}",
+            "data": result
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error sending verification email: {str(e)}"
+        }
 
 # User Management
 @router.get("/users")
