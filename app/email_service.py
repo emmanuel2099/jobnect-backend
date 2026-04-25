@@ -84,7 +84,7 @@ class EmailService:
             }
 
     def _send_gmail_smtp(self, email: str, name: str, otp: str) -> dict:
-        """Send email via Gmail SMTP (reliable delivery)"""
+        """Send email via Gmail SMTP (reliable delivery) with branded HTML template"""
         try:
             import smtplib
             from email.mime.text import MIMEText
@@ -97,28 +97,123 @@ class EmailService:
             gmail_password = "qwjm ybnc zxfw pmgp"
             
             # Create message
-            msg = MIMEMultipart()
-            msg['From'] = gmail_user
+            msg = MIMEMultipart('alternative')
+            msg['From'] = f"Eagle's Pride <{gmail_user}>"
             msg['To'] = email
-            msg['Subject'] = "Verify Your Eagle's Pride Account"
+            msg['Subject'] = "🦅 Verify Your Eagle's Pride Account"
             
-            # Email body
-            body = f"""
+            # HTML email template with Eagle's Pride branding
+            html_body = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Eagle's Pride Account</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        
+        <!-- Header with Eagle's Pride Logo -->
+        <div style="background: linear-gradient(135deg, #D84315 0%, #FF5722 100%); padding: 30px 20px; text-align: center;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                <!-- Eagle Logo (using emoji as placeholder - you can replace with actual logo URL) -->
+                <div style="width: 60px; height: 60px; background-color: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                    <span style="font-size: 30px;">🦅</span>
+                </div>
+                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Eagle's Pride</h1>
+            </div>
+            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;">Your Gateway to Career Success</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Welcome to Eagle's Pride!</h2>
+            
+            <p style="color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                Hello <strong>{name}</strong>,
+            </p>
+            
+            <p style="color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                Thank you for joining Eagle's Pride! To complete your account setup, please verify your email address using the code below:
+            </p>
+            
+            <!-- OTP Code Box -->
+            <div style="background: linear-gradient(135deg, #D84315 0%, #FF5722 100%); border-radius: 12px; padding: 25px; text-align: center; margin: 30px 0;">
+                <p style="color: white; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
+                <div style="background-color: rgba(255,255,255,0.15); border-radius: 8px; padding: 15px; display: inline-block;">
+                    <span style="color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: 'Courier New', monospace;">{otp}</span>
+                </div>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 12px;">This code expires in 10 minutes</p>
+            </div>
+            
+            <!-- Instructions -->
+            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                <h3 style="color: #D84315; margin: 0 0 15px 0; font-size: 18px;">📱 How to verify:</h3>
+                <ol style="color: #666; margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Open the Eagle's Pride app</li>
+                    <li>Enter the 6-digit code above</li>
+                    <li>Start exploring amazing job opportunities!</li>
+                </ol>
+            </div>
+            
+            <!-- Security Notice -->
+            <div style="border-left: 4px solid #D84315; padding-left: 15px; margin: 25px 0;">
+                <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.5;">
+                    <strong>🔒 Security Notice:</strong> If you didn't create an account with Eagle's Pride, please ignore this email. Your account security is important to us.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8f9fa; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
+            <p style="color: #999; font-size: 14px; margin: 0 0 10px 0;">
+                Best regards,<br>
+                <strong style="color: #D84315;">The Eagle's Pride Team</strong>
+            </p>
+            <p style="color: #ccc; font-size: 12px; margin: 0;">
+                © 2026 Eagle's Pride. Empowering careers, connecting opportunities.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Mobile Responsive -->
+    <style>
+        @media only screen and (max-width: 600px) {{
+            .container {{ width: 100% !important; }}
+            .content {{ padding: 20px !important; }}
+        }}
+    </style>
+</body>
+</html>
+            """
+            
+            # Plain text fallback
+            text_body = f"""
 Hello {name},
 
-Welcome to Eagle's Pride! 
+Welcome to Eagle's Pride!
 
 Your email verification code is: {otp}
 
 This code will expire in 10 minutes. Please enter this code in the app to verify your email address.
 
+How to verify:
+1. Open the Eagle's Pride app
+2. Enter the 6-digit code above
+3. Start exploring amazing job opportunities!
+
 If you didn't create an account with Eagle's Pride, please ignore this email.
 
 Best regards,
-Eagle's Pride Team
+The Eagle's Pride Team
+
+© 2026 Eagle's Pride. Empowering careers, connecting opportunities.
             """.strip()
             
-            msg.attach(MIMEText(body, 'plain'))
+            # Attach both HTML and plain text versions
+            msg.attach(MIMEText(text_body, 'plain'))
+            msg.attach(MIMEText(html_body, 'html'))
             
             # Send email
             server = smtplib.SMTP(smtp_server, smtp_port)
@@ -130,7 +225,7 @@ Eagle's Pride Team
             
             return {
                 "success": True,
-                "message": "Email sent successfully via Gmail",
+                "message": "Branded email sent successfully via Gmail",
                 "email": email
             }
             
@@ -270,7 +365,7 @@ Eagle's Pride Team
             }
     
     def send_password_reset_email(self, email: str, name: str = "User") -> dict:
-        """Send password reset OTP via Gmail SMTP"""
+        """Send password reset OTP via Gmail SMTP with branded template"""
         try:
             otp = self.generate_otp()
             
@@ -290,13 +385,90 @@ Eagle's Pride Team
                 gmail_password = "qwjm ybnc zxfw pmgp"
                 
                 # Create message
-                msg = MIMEMultipart()
-                msg['From'] = gmail_user
+                msg = MIMEMultipart('alternative')
+                msg['From'] = f"Eagle's Pride <{gmail_user}>"
                 msg['To'] = email
-                msg['Subject'] = "Reset Your Eagle's Pride Password"
+                msg['Subject'] = "🔐 Reset Your Eagle's Pride Password"
                 
-                # Email body
-                body = f"""
+                # HTML email template for password reset
+                html_body = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Your Eagle's Pride Password</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        
+        <!-- Header with Eagle's Pride Logo -->
+        <div style="background: linear-gradient(135deg, #D84315 0%, #FF5722 100%); padding: 30px 20px; text-align: center;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                <div style="width: 60px; height: 60px; background-color: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                    <span style="font-size: 30px;">🦅</span>
+                </div>
+                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Eagle's Pride</h1>
+            </div>
+            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;">Password Reset Request</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">🔐 Password Reset</h2>
+            
+            <p style="color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                Hello <strong>{name}</strong>,
+            </p>
+            
+            <p style="color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                You requested to reset your Eagle's Pride password. Use the verification code below to proceed with resetting your password:
+            </p>
+            
+            <!-- OTP Code Box -->
+            <div style="background: linear-gradient(135deg, #D84315 0%, #FF5722 100%); border-radius: 12px; padding: 25px; text-align: center; margin: 30px 0;">
+                <p style="color: white; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Password Reset Code</p>
+                <div style="background-color: rgba(255,255,255,0.15); border-radius: 8px; padding: 15px; display: inline-block;">
+                    <span style="color: white; font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: 'Courier New', monospace;">{otp}</span>
+                </div>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 12px;">This code expires in 10 minutes</p>
+            </div>
+            
+            <!-- Instructions -->
+            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                <h3 style="color: #D84315; margin: 0 0 15px 0; font-size: 18px;">🔄 How to reset your password:</h3>
+                <ol style="color: #666; margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Open the Eagle's Pride app</li>
+                    <li>Enter the 6-digit code above</li>
+                    <li>Create your new secure password</li>
+                </ol>
+            </div>
+            
+            <!-- Security Notice -->
+            <div style="border-left: 4px solid #ff9800; padding-left: 15px; margin: 25px 0; background-color: #fff3e0; padding: 15px; border-radius: 4px;">
+                <p style="color: #e65100; font-size: 14px; margin: 0; line-height: 1.5;">
+                    <strong>⚠️ Security Alert:</strong> If you didn't request a password reset, please ignore this email and your password will remain unchanged. Consider updating your account security if you suspect unauthorized access.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8f9fa; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
+            <p style="color: #999; font-size: 14px; margin: 0 0 10px 0;">
+                Best regards,<br>
+                <strong style="color: #D84315;">The Eagle's Pride Team</strong>
+            </p>
+            <p style="color: #ccc; font-size: 12px; margin: 0;">
+                © 2026 Eagle's Pride. Empowering careers, connecting opportunities.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+                """
+                
+                # Plain text fallback
+                text_body = f"""
 Hello {name},
 
 You requested to reset your Eagle's Pride password.
@@ -305,13 +477,22 @@ Your password reset code is: {otp}
 
 This code will expire in 10 minutes. Enter this code in the app to reset your password.
 
+How to reset your password:
+1. Open the Eagle's Pride app
+2. Enter the 6-digit code above
+3. Create your new secure password
+
 If you didn't request a password reset, please ignore this email.
 
 Best regards,
-Eagle's Pride Team
+The Eagle's Pride Team
+
+© 2026 Eagle's Pride. Empowering careers, connecting opportunities.
                 """.strip()
                 
-                msg.attach(MIMEText(body, 'plain'))
+                # Attach both HTML and plain text versions
+                msg.attach(MIMEText(text_body, 'plain'))
+                msg.attach(MIMEText(html_body, 'html'))
                 
                 # Send email
                 server = smtplib.SMTP(smtp_server, smtp_port)
