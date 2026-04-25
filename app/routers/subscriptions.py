@@ -49,11 +49,37 @@ class VerifyPaymentRequest(BaseModel):
     plan_id: int
 
 # Get all subscription plans
-@router.get("/plans", response_model=list[SubscriptionPlanResponse])
-def get_subscription_plans(db: Session = Depends(get_db)):
-    """Get all available subscription plans"""
+@router.get("/plans")
+def get_subscription_plans(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all available subscription plans with user-specific pricing"""
     plans = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active == True).all()
-    return plans
+    
+    # Apply pricing based on user type
+    result = []
+    for plan in plans:
+        plan_dict = {
+            "id": plan.id,
+            "name": plan.name,
+            "tier": plan.tier,
+            "duration_months": plan.duration_months,
+            "description": plan.description,
+            "is_active": plan.is_active
+        }
+        
+        # Set price based on user type
+        # Companies: Low ₦10,000, High ₦20,000
+        # Job Seekers: Low ₦3,000, High ₦10,000
+        if current_user.user_type == "company":
+            plan_dict["price"] = 20000.0 if plan.tier == "high" else 10000.0
+        else:  # applicant
+            plan_dict["price"] = 10000.0 if plan.tier == "high" else 3000.0
+        
+        result.append(plan_dict)
+    
+    return result
 
 # Get user's current subscription
 @router.get("/my-subscription", response_model=Optional[SubscriptionResponse])
