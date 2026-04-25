@@ -37,6 +37,7 @@ function showSection(sectionName) {
             break;
         case 'payments':
             loadPayments();
+            refreshPayments();
             break;
         case 'chat':
             loadChat();
@@ -1002,4 +1003,214 @@ async function resendVerificationEmail(userId, email) {
 function refreshEmailVerification() {
     loadEmailVerificationStatus();
     showSuccess('Email verification status refreshed');
+}
+
+// Enhanced Payment Analytics Functions
+async function refreshPayments() {
+    await loadPayments();
+}
+
+async function loadPayments() {
+    const container = document.getElementById('paymentsTable');
+    container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading payments...</p></div>';
+    
+    try {
+        const response = await fetch(`${API}/admin/payments`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update summary cards
+            updatePaymentSummary(data.data.summary);
+            
+            // Update payment methods chart
+            updatePaymentMethodsChart(data.data.paymentMethods);
+            
+            // Update revenue trend chart
+            updateRevenueTrendChart(data.data.dailyRevenue);
+            
+            // Update payments table
+            if (data.data.payments.length > 0) {
+                container.innerHTML = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.data.payments.map(payment => `
+                                    <tr>
+                                        <td>${payment.id}</td>
+                                        <td><strong>${payment.userName}</strong></td>
+                                        <td>${payment.userEmail}</td>
+                                        <td><strong>₦${payment.amount.toLocaleString()}</strong></td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-credit-card me-1"></i>
+                                                ${payment.paymentMethod || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td><code>${payment.transactionReference || 'N/A'}</code></td>
+                                        <td>
+                                            <span class="badge bg-${getPaymentStatusColor(payment.status)}">
+                                                <i class="bi bi-${getPaymentStatusIcon(payment.status)} me-1"></i>
+                                                ${payment.status}
+                                            </span>
+                                        </td>
+                                        <td>${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';
+            }
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading payments</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading payments:', error);
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><p>Error loading payments</p></div>';
+    }
+}
+
+function updatePaymentSummary(summary) {
+    // Update revenue cards
+    document.getElementById('totalRevenue').textContent = `₦${summary.totalRevenue.toLocaleString()}`;
+    document.getElementById('monthlyRevenue').textContent = `₦${summary.monthlyRevenue.toLocaleString()}`;
+    document.getElementById('weeklyRevenue').textContent = `₦${summary.weeklyRevenue.toLocaleString()}`;
+    document.getElementById('averagePayment').textContent = `₦${summary.averagePayment.toLocaleString()}`;
+    
+    // Update payment status cards
+    document.getElementById('completedPayments').textContent = summary.completedPayments;
+    document.getElementById('pendingPayments').textContent = summary.pendingPayments;
+    document.getElementById('failedPayments').textContent = summary.failedPayments;
+}
+
+function updatePaymentMethodsChart(paymentMethods) {
+    const container = document.getElementById('paymentMethodsChart');
+    
+    if (Object.keys(paymentMethods).length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-pie-chart"></i><p>No payment methods data</p></div>';
+        return;
+    }
+    
+    let html = '<div class="payment-methods-list">';
+    
+    Object.entries(paymentMethods).forEach(([method, data]) => {
+        const percentage = ((data.count / Object.values(paymentMethods).reduce((sum, m) => sum + m.count, 0)) * 100).toFixed(1);
+        
+        html += `
+            <div class="payment-method-item mb-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>${method}</strong>
+                        <span class="badge bg-primary ms-2">${data.count} payments</span>
+                    </div>
+                    <div class="text-end">
+                        <div><strong>₦${data.amount.toLocaleString()}</strong></div>
+                        <small class="text-muted">${percentage}%</small>
+                    </div>
+                </div>
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar bg-primary" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function updateRevenueTrendChart(dailyRevenue) {
+    const container = document.getElementById('revenueTrendChart');
+    
+    if (Object.keys(dailyRevenue).length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-graph-up"></i><p>No revenue trend data</p></div>';
+        return;
+    }
+    
+    // Sort dates and create chart
+    const sortedDates = Object.keys(dailyRevenue).sort();
+    const maxRevenue = Math.max(...Object.values(dailyRevenue));
+    
+    let html = '<div class="revenue-trend">';
+    
+    sortedDates.forEach(date => {
+        const revenue = dailyRevenue[date];
+        const height = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0;
+        const dateObj = new Date(date);
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+        
+        html += `
+            <div class="trend-item text-center mb-3">
+                <div class="trend-bar-container" style="height: 80px; display: flex; align-items: end; justify-content: center;">
+                    <div class="trend-bar bg-primary" style="width: 30px; height: ${height}%; border-radius: 4px 4px 0 0; min-height: 2px;"></div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">${dayName}</small><br>
+                    <strong style="font-size: 12px;">₦${revenue.toLocaleString()}</strong>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    container.innerHTML = `
+        <style>
+            .revenue-trend {
+                display: flex;
+                justify-content: space-around;
+                align-items: end;
+                padding: 20px 10px;
+            }
+            .trend-item {
+                flex: 1;
+                max-width: 80px;
+            }
+        </style>
+        ${html}
+    `;
+}
+
+function getPaymentStatusColor(status) {
+    switch (status?.toLowerCase()) {
+        case 'completed':
+        case 'success':
+            return 'success';
+        case 'pending':
+            return 'warning';
+        case 'failed':
+        case 'cancelled':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+}
+
+function getPaymentStatusIcon(status) {
+    switch (status?.toLowerCase()) {
+        case 'completed':
+        case 'success':
+            return 'check-circle-fill';
+        case 'pending':
+            return 'clock-fill';
+        case 'failed':
+        case 'cancelled':
+            return 'x-circle-fill';
+        default:
+            return 'question-circle-fill';
+    }
 }

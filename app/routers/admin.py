@@ -784,22 +784,78 @@ async def get_all_conversations(db: Session = Depends(get_db)):
 
 @router.get("/payments")
 async def get_all_payments(db: Session = Depends(get_db)):
-    """Get all payments for admin financial tracking"""
+    """Get all payments for admin financial tracking with comprehensive analytics"""
     from app.models import Payment
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
     
     payments = db.query(Payment).order_by(desc(Payment.created_at)).all()
+    
+    # Calculate revenue analytics
+    total_revenue = sum(p.amount for p in payments if p.status == "completed")
+    completed_payments = [p for p in payments if p.status == "completed"]
+    pending_payments = [p for p in payments if p.status == "pending"]
+    failed_payments = [p for p in payments if p.status == "failed"]
+    
+    # Monthly revenue (current month)
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    monthly_revenue = sum(
+        p.amount for p in completed_payments 
+        if p.created_at and p.created_at.month == current_month and p.created_at.year == current_year
+    )
+    
+    # Weekly revenue (last 7 days)
+    week_ago = datetime.now() - timedelta(days=7)
+    weekly_revenue = sum(
+        p.amount for p in completed_payments 
+        if p.created_at and p.created_at >= week_ago
+    )
+    
+    # Average payment
+    average_payment = total_revenue / len(completed_payments) if completed_payments else 0
+    
+    # Payment methods breakdown
+    payment_methods = {}
+    for payment in completed_payments:
+        method = payment.payment_method or "Unknown"
+        if method not in payment_methods:
+            payment_methods[method] = {"count": 0, "amount": 0}
+        payment_methods[method]["count"] += 1
+        payment_methods[method]["amount"] += payment.amount
+    
+    # Daily revenue for last 7 days
+    daily_revenue = {}
+    for i in range(7):
+        date = datetime.now() - timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+        daily_revenue[date_str] = sum(
+            p.amount for p in completed_payments 
+            if p.created_at and p.created_at.date() == date.date()
+        )
     
     return {
         "success": True,
         "message": f"Found {len(payments)} payments",
         "data": {
-            "total": len(payments),
-            "totalAmount": sum(p.amount for p in payments if p.status == "completed"),
+            "summary": {
+                "totalRevenue": total_revenue,
+                "monthlyRevenue": monthly_revenue,
+                "weeklyRevenue": weekly_revenue,
+                "averagePayment": round(average_payment, 2),
+                "totalPayments": len(payments),
+                "completedPayments": len(completed_payments),
+                "pendingPayments": len(pending_payments),
+                "failedPayments": len(failed_payments)
+            },
+            "paymentMethods": payment_methods,
+            "dailyRevenue": daily_revenue,
             "payments": [
                 {
                     "id": payment.id,
                     "userId": payment.user_id,
                     "userName": db.query(User).filter(User.id == payment.user_id).first().name if db.query(User).filter(User.id == payment.user_id).first() else "N/A",
+                    "userEmail": db.query(User).filter(User.id == payment.user_id).first().email if db.query(User).filter(User.id == payment.user_id).first() else "N/A",
                     "amount": payment.amount,
                     "currency": payment.currency,
                     "paymentMethod": payment.payment_method,
