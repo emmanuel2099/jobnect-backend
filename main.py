@@ -7,7 +7,7 @@ import uvicorn
 import os
 
 from app.database import engine, Base, init_db
-from app.routers import auth, profile, jobs, applications, companies, master_data, admin, notifications, chat, upload, subscriptions
+from app.routers import auth, profile, jobs, applications, companies, master_data, admin, notifications, chat, upload, subscriptions, email_verification
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -179,6 +179,7 @@ app.include_router(companies.router, prefix="/api/v10", tags=["Companies"])
 app.include_router(master_data.router, prefix="/api/v10", tags=["Master Data"])
 app.include_router(notifications.router, prefix="/api/v10", tags=["Notifications"])
 app.include_router(subscriptions.router, prefix="/api/v10", tags=["Subscriptions"])
+app.include_router(email_verification.router, prefix="/api/v10", tags=["Email Verification"])
 app.include_router(chat.router, tags=["Chat"])
 app.include_router(admin.router, prefix="/api/v10/admin", tags=["Admin"])
 app.include_router(upload.router, prefix="/api/v10", tags=["Upload"])

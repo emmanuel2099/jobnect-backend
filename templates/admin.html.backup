@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Editorial Recruiter - Command Center</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#ab3500",
+                        "primary-container": "#ff6b35",
+                        "secondary": "#486080",
+                        "tertiary": "#00677e",
+                        "surface": "#fdf8fd",
+                        "surface-container": "#f1ecf2",
+                        "surface-container-low": "#f7f2f8",
+                        "surface-container-high": "#ebe7ec",
+                        "surface-container-highest": "#e5e1e7",
+                        "on-surface": "#1c1b1f",
+                        "on-surface-variant": "#594139",
+                        "background": "#fdf8fd",
+                        "outline": "#8d7168"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #fdf8fd; 
+        }
+        .font-headline { 
+            font-family: 'Manrope', sans-serif; 
+        }
+        .material-symbols-outlined { 
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; 
+        }
+        .custom-scrollbar::-webkit-scrollbar { 
+            width: 4px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-track { 
+            background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: #e5e1e7; 
+            border-radius: 10px; 
+        }
+        
+        /* Section Management */
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e5e1e7;
+        }
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #594139;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1ecf2;
+            font-size: 14px;
+            color: #1c1b1f;
+        }
+        tr:hover {
+            background-color: #fdf8fd;
+        }
+        
+        /* Badge Styles */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .badge-online {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-offline {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        
+        /* Button Styles */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .btn-primary {
+            background-color: #ab3500;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #ff6b35;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #8d7168;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f1ecf2;
+            border-top-color: #ab3500;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #8d7168;
+        }
+        .empty-state .material-symbols-outlined {
+            font-size: 64px;
+            color: #e5e1e7;
+            margin-bottom: 16px;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid #f1ecf2;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1c1b1f;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #8d7168;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        .close-btn:hover {
+            background-color: #f1ecf2;
+        }
+        .form-group {
+            padding: 0 24px;
+            margin-bottom: 20px;
+        }
+        .form-group:last-of-type {
+            padding-bottom: 24px;
+        }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #594139;
+            margin-bottom: 8px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e5e1e7;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1c1b1f;
+            background-color: white;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #ab3500;
+            box-shadow: 0 0 0 3px rgba(171, 53, 0, 0.1);
+        }
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        /* Filter Button Styles */
+        .filter-btn.active {
+            background-color: #ab3500 !important;
+            color: white !important;
+            border-color: #ab3500 !important;
+        }
+    </style>
+</head>
+<body class="text-on-surface bg-background">
+    <!-- SideNavBar Component -->
+    <aside class="fixed left-0 top-0 h-screen w-64 z-50 bg-slate-50 border-r border-slate-200 flex flex-col p-6 gap-2">
+        <div class="mb-8 px-2">
+            <h1 class="font-headline font-extrabold text-xl text-slate-900">Editorial Recruiter</h1>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">System Operational</p>
+            </div>
+        </div>
+        <nav class="flex-grow flex flex-col gap-1">
+            <a class="flex items-center gap-3 px-4 py-3 bg-white text-primary rounded-lg shadow-sm font-bold border border-slate-100 transition-all nav-item active" href="#" onclick="showSection('dashboard', event); return false;">
+                <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Command Center
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('users', event); return false;">
+                <span class="material-symbols-outlined" data-icon="group">group</span>
+                User Management
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('jobs', event); return false;">
+                <span class="material-symbols-outlined" data-icon="work">work</span>
+                Job Management
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('companies', event); return false;">
+                <span class="material-symbols-outlined" data-icon="business">business</span>
+                Companies
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('applications', event); return false;">
+                <span class="material-symbols-outlined" data-icon="description">description</span>
+                Applications
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('financials', event); return false;">
+                <span class="material-symbols-outlined" data-icon="payments">payments</span>
+                Financials
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('notifications', event); return false;">
+                <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+                Notifications
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('chat', event); return false;">
+                <span class="material-symbols-outlined" data-icon="chat">chat</span>
+                Chat
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('categories', event); return false;">
+                <span class="material-symbols-outlined" data-icon="category">category</span>
+                Categories
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('recommended', event); return false;">
+                <span class="material-symbols-outlined" data-icon="star">star</span>
+                Recommended
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-white hover:text-primary rounded-lg transition-all nav-item" href="#" onclick="showSection('reports', event); return false;">
+                <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Global Reports
+            </a>
+        </nav>
+        <div class="mt-auto flex flex-col gap-1 border-t border-slate-200 pt-4">
+            <button class="w-full bg-primary-container text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-primary transition-all mb-4 flex items-center justify-center gap-2" onclick="showNotificationModal()">
+                <span class="material-symbols-outlined text-sm">add_circle</span>
+                System Broadcast
+            </button>
+            <a class="flex items-center gap-3 px-4 py-2 text-slate-500 text-sm hover:text-slate-900" href="#">
+                <span class="material-symbols-outlined text-lg" data-icon="help">help</span>
+                Support Logs
+            </a>
+            <a class="flex items-center gap-3 px-4 py-2 text-slate-500 text-sm hover:text-error" href="#">
+                <span class="material-symbols-outlined text-lg" data-icon="logout">logout</span>
+                Logout Admin
+            </a>
+        </div>
+    </aside>
+
+    <!-- TopAppBar Component -->
+    <header class="fixed top-0 right-0 left-64 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center px-8 py-3">
+        <div class="flex items-center gap-6 flex-1">
+            <!-- Global Filters -->
+            <div class="flex items-center gap-4 bg-slate-100 p-1 rounded-lg">
+                <select class="bg-transparent border-none text-xs font-bold text-slate-600 focus:ring-0 cursor-pointer">
+                    <option>Last 24 Hours</option>
+                    <option>Last 7 Days</option>
+                    <option>Last 30 Days</option>
+                </select>
+                <div class="w-px h-4 bg-slate-300"></div>
+                <select class="bg-transparent border-none text-xs font-bold text-slate-600 focus:ring-0 cursor-pointer">
+                    <option>All Platforms</option>
+                    <option>Web Seeker</option>
+                    <option>Company Portal</option>
+                </select>
+                <div class="w-px h-4 bg-slate-300"></div>
+                <button class="px-3 py-1 text-xs font-bold text-primary hover:bg-white rounded transition-all">Apply Filters</button>
+            </div>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-[10px] font-bold text-green-700">API: 12ms</span>
+            </div>
+            <div class="flex items-center gap-3 pl-6 border-l border-slate-200">
+                <div class="text-right">
+                    <p class="text-xs font-bold text-slate-900">Admin Administrator</p>
+                    <p class="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">Superuser Account</p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/20">
+                    <span class="material-symbols-outlined text-primary">person</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="ml-64 mt-16 p-8 min-h-screen">
+        <!-- Dashboard Section (Default) -->
+        <div id="dashboard" class="section active">
+            <!-- Hero & Quick Stats -->
+            <section class="mb-10 flex justify-between items-end">
+                <div>
+                    <h2 class="font-headline text-3xl font-black tracking-tight text-slate-900">Engle Pride Command Center</h2>
+                    <p class="text-slate-500 text-sm">Real-time pulse of the editorial recruiting ecosystem.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="p-2 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-all" onclick="loadAllData()">
+                        <span class="material-symbols-outlined text-slate-500" data-icon="refresh">refresh</span>
+                    </button>
+                    <button class="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-all">
+                        <span class="material-symbols-outlined text-sm" data-icon="file_download">file_download</span>
+                        Daily Report
+                    </button>
+                </div>
+            </section>
+
+            <!-- Expanded Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Seekers</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black text-slate-900" id="totalApplicants">0</span>
+                        <span class="text-[10px] font-bold text-green-600">+4.2%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Companies</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black text-slate-900" id="totalCompanies">0</span>
+                        <span class="text-[10px] font-bold text-green-600">+1.8%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Jobs</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black text-slate-900" id="totalJobs">0</span>
+                        <span class="text-[10px] font-bold text-orange-600">Peak</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Chats</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black text-slate-900">3,104</span>
+                        <span class="text-[10px] font-bold text-slate-400">Stable</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Users</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black text-slate-900" id="totalUsers">0</span>
+                        <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden ml-2">
+                            <div class="bg-primary h-full w-[92%]"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-primary text-white p-4 rounded-xl border border-primary-container shadow-sm">
+                    <p class="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Monthly MRR</p>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-2xl font-headline font-black">$42.8k</span>
+                        <span class="text-[10px] font-bold text-white/90">↑ $3k</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div id="users" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900 mb-4">User Management</h3>
+                <div class="flex gap-2 mb-4">
+                    <button class="px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary-container transition-all filter-btn active" onclick="filterUsers('all')">All Users</button>
+                    <button class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold text-sm hover:bg-slate-50 transition-all filter-btn" onclick="filterUsers('applicant')">Job Seekers</button>
+                    <button class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold text-sm hover:bg-slate-50 transition-all filter-btn" onclick="filterUsers('company')">Companies</button>
+                    <button class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold text-sm hover:bg-slate-50 transition-all filter-btn" onclick="filterUsers('online')">Online</button>
+                </div>
+            </div>
+            <div id="usersTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Click a filter to load users...</p></div>
+            </div>
+        </div>
+
+        <!-- Jobs Section -->
+        <div id="jobs" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Job Management</h3>
+            </div>
+            <div id="jobsTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading jobs...</p></div>
+            </div>
+        </div>
+
+        <!-- Companies Section -->
+        <div id="companies" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Company Management</h3>
+            </div>
+            <div id="companiesTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading companies...</p></div>
+            </div>
+        </div>
+
+        <!-- Applications Section -->
+        <div id="applications" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Application Management</h3>
+            </div>
+            <div id="applicationsTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading applications...</p></div>
+            </div>
+        </div>
+
+        <!-- Notifications Section -->
+        <div id="notifications" class="section" style="display: none;">
+            <div class="mb-6 flex justify-between items-center">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Notifications</h3>
+                <button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary-container transition-all" onclick="showNotificationModal()">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    Send Notification
+                </button>
+            </div>
+            <div id="notificationsTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading notifications...</p></div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div id="chat" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Chat Conversations</h3>
+            </div>
+            <div id="chatTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading conversations...</p></div>
+            </div>
+        </div>
+
+        <!-- Categories Section -->
+        <div id="categories" class="section" style="display: none;">
+            <div class="mb-6 flex justify-between items-center">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Category Management</h3>
+                <button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary-container transition-all" onclick="showCategoryModal()">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    Add Category
+                </button>
+            </div>
+            <div id="categoriesTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading categories...</p></div>
+            </div>
+        </div>
+
+        <!-- Recommended Jobs Section -->
+        <div id="recommended" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Recommended Jobs</h3>
+            </div>
+            <div id="recommendedTable" class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="loading"><div class="spinner"></div><p>Loading jobs...</p></div>
+            </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div id="reports" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Global Reports</h3>
+            </div>
+            <div class="bg-white p-8 rounded-xl border border-slate-100 shadow-sm text-center">
+                <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">analytics</span>
+                <p class="text-slate-500">Reports feature coming soon</p>
+            </div>
+        </div>
+
+        <!-- Financials Section -->
+        <div id="financials" class="section" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-2xl font-headline font-bold text-slate-900">Financials</h3>
+            </div>
+            <div class="bg-white p-8 rounded-xl border border-slate-100 shadow-sm text-center">
+                <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">payments</span>
+                <p class="text-slate-500">Financial reports coming soon</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Send Notification</h3>
+                <button class="close-btn" onclick="closeNotificationModal()">&times;</button>
+            </div>
+            <form id="notificationForm" onsubmit="sendNotification(event)">
+                <div class="form-group">
+                    <label class="form-label">Send To</label>
+                    <select class="form-control" id="notifTarget" required>
+                        <option value="all">All Users</option>
+                        <option value="applicant">All Job Seekers</option>
+                        <option value="company">All Companies</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="notifTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea class="form-control" id="notifMessage" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select class="form-control" id="notifType">
+                        <option value="general">General</option>
+                        <option value="job_alert">Job Alert</option>
+                        <option value="announcement">Announcement</option>
+                        <option value="system">System</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-paper-plane"></i> Send Notification
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="categoryModalTitle">Add Category</h3>
+                <button class="close-btn" onclick="closeCategoryModal()">&times;</button>
+            </div>
+            <form id="categoryForm" onsubmit="saveCategory(event)">
+                <input type="hidden" id="categoryId">
+                <div class="form-group">
+                    <label class="form-label">Category Name</label>
+                    <input type="text" class="form-control" id="categoryName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" class="form-control" id="categoryIcon" placeholder="fa-briefcase">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="categoryDescription"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-save"></i> Save Category
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/admin.js"></script>
+</body>
+</html>
