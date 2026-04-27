@@ -18,6 +18,55 @@ class VerifyEmailRequest(BaseModel):
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
+@router.post("/setup-database")
+async def setup_email_database(db: Session = Depends(get_db)):
+    """Setup email_otps table if it doesn't exist"""
+    try:
+        from sqlalchemy import text
+        
+        # Check if table exists
+        result = db.execute(text("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_name = 'email_otps'
+        """)).fetchone()
+        
+        if result:
+            return {
+                "success": True,
+                "message": "email_otps table already exists"
+            }
+        
+        # Create the table (PostgreSQL compatible)
+        db.execute(text("""
+            CREATE TABLE email_otps (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                otp VARCHAR(10) NOT NULL,
+                purpose VARCHAR(50) DEFAULT 'email_verification',
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        
+        # Create indexes separately
+        db.execute(text("CREATE INDEX idx_email_purpose ON email_otps (email, purpose)"))
+        db.execute(text("CREATE INDEX idx_expires_at ON email_otps (expires_at)"))
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "email_otps table created successfully"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {
+            "success": False,
+            "message": f"Failed to create email_otps table: {str(e)}"
+        }
+
 @router.post("/send-verification")
 async def send_verification_email(request: SendVerificationRequest, db: Session = Depends(get_db)):
     """Send email verification OTP"""
