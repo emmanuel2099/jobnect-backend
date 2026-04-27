@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..email_service import email_service
 from ..auth import get_current_user
+import bcrypt
 
 router = APIRouter(prefix="/email", tags=["Email Verification"])
 
@@ -17,6 +18,20 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+    confirm_password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
 
 @router.post("/setup-database")
 async def setup_email_database(db: Session = Depends(get_db)):
@@ -227,3 +242,237 @@ async def get_verification_status(email: str, db: Session = Depends(get_db)):
             "email_verified": False,
             "message": "Status unknown - database error"
         }
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send forgot password OTP"""
+    try:
+        # Check if user exists
+        from sqlalchemy import text
+        user = db.execute(
+            text("SELECT id, name FROM users WHERE email = :email"),
+            {"email": request.email}
+        ).fetchone()
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return {
+                "success": True,
+                "message": "If this email exists, you will receive a password reset code"
+            }
+        
+        # Send password reset email
+        result = email_service.send_password_reset_email(
+            email=request.email,
+            name=user[1] or "User"
+        )
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "message": "Password reset code sent to your email",
+                "email": request.email,
+                "otp": result.get("otp")  # For testing - remove in production
+            }
+        else:
+            return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send password reset: {str(e)}")
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password with OTP verification"""
+    try:
+        # Validate passwords match
+        if request.new_password != request.confirm_password:
+            return {
+                "success": False,
+                "message": "Passwords do not match"
+            }
+        
+        # Validate password strength
+        if len(request.new_password) < 6:
+            return {
+                "success": False,
+                "message": "Password must be at least 6 characters long"
+            }
+        
+        # Verify OTP first
+        otp_result = email_service.get_stored_otp(request.email, purpose="password_reset")
+        
+        if not otp_result:
+            return {
+                "success": False,
+                "message": "No password reset request found for this email"
+            }
+        
+        if otp_result["otp"] != request.otp:
+            return {
+                "success": False,
+                "message": "Invalid reset code"
+            }
+        
+        from datetime import datetime
+        if otp_result["expires_at"] < datetime.utcnow():
+            return {
+                "success": False,
+                "message": "Reset code has expired"
+            }
+        
+        # Check if user exists
+        from sqlalchemy import text
+        user = db.execute(
+            text("SELECT id FROM users WHERE email = :email"),
+            {"email": request.email}
+        ).fetchone()
+        
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+        
+        # Hash new password
+        hashed_password = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # Update password
+        db.execute(
+            text("UPDATE users SET password = :password, updated_at = CURRENT_TIMESTAMP WHERE email = :email"),
+            {"password": hashed_password, "email": request.email}
+        )
+        
+        # Remove used OTP
+        email_service.remove_otp(request.email, purpose="password_reset")
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Password reset successfully"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Password reset failed: {str(e)}")
+
+@router.post("/change-password")
+async def change_password(request: ChangePasswordRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Change password for authenticated user"""
+    try:
+        # Validate passwords match
+        if request.new_password != request.confirm_password:
+            return {
+                "success": False,
+                "message": "New passwords do not match"
+            }
+        
+        # Validate password strength
+        if len(request.new_password) < 6:
+            return {
+                "success": False,
+                "message": "Password must be at least 6 characters long"
+            }
+        
+        # Get current user's password
+        from sqlalchemy import text
+        user = db.execute(
+            text("SELECT password FROM users WHERE id = :user_id"),
+            {"user_id": current_user["user_id"]}
+        ).fetchone()
+        
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+        
+        # Verify current password
+        if not bcrypt.checkpw(request.current_password.encode('utf-8'), user[0].encode('utf-8')):
+            return {
+                "success": False,
+                "message": "Current password is incorrect"
+            }
+        
+        # Hash new password
+        hashed_password = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # Update password
+        db.execute(
+            text("UPDATE users SET password = :password, updated_at = CURRENT_TIMESTAMP WHERE id = :user_id"),
+            {"password": hashed_password, "user_id": current_user["user_id"]}
+        )
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Password changed successfully"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Password change failed: {str(e)}")
+
+@router.post("/resend-otp")
+async def resend_otp(request: ResendVerificationRequest, db: Session = Depends(get_db)):
+    """Resend OTP for email verification or password reset"""
+    try:
+        # Check if user exists
+        from sqlalchemy import text
+        user = db.execute(
+            text("SELECT id, name, email_verified FROM users WHERE email = :email"),
+            {"email": request.email}
+        ).fetchone()
+        
+        if not user:
+            return {
+                "success": False,
+                "message": "Email not found"
+            }
+        
+        # Check if there's an existing OTP request
+        existing_otp = email_service.get_stored_otp(request.email, purpose="email_verification")
+        password_reset_otp = email_service.get_stored_otp(request.email, purpose="password_reset")
+        
+        if password_reset_otp:
+            # Resend password reset OTP
+            result = email_service.send_password_reset_email(
+                email=request.email,
+                name=user[1] or "User"
+            )
+            
+            if result["success"]:
+                return {
+                    "success": True,
+                    "message": "Password reset code resent",
+                    "type": "password_reset",
+                    "otp": result.get("otp")  # For testing
+                }
+            else:
+                return result
+                
+        elif existing_otp or not user[2]:  # Has OTP request or not verified
+            # Resend email verification OTP
+            result = email_service.send_verification_email(
+                email=request.email,
+                name=user[1] or "User"
+            )
+            
+            if result["success"]:
+                return {
+                    "success": True,
+                    "message": "Verification code resent",
+                    "type": "email_verification",
+                    "otp": result.get("otp")  # For testing
+                }
+            else:
+                return result
+        else:
+            return {
+                "success": False,
+                "message": "No active OTP request found and email is already verified"
+            }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to resend OTP: {str(e)}")
