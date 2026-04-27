@@ -544,13 +544,30 @@ The Eagle's Pride Team
             }
     
     def _store_otp(self, email: str, otp: str, purpose: str = "email_verification"):
-        """Store OTP in database with expiration"""
+        """Store OTP in database with expiration - creates table if needed"""
         try:
             from .database import SessionLocal
             from sqlalchemy import text
             db = SessionLocal()
             
             try:
+                # Try to create table if it doesn't exist
+                try:
+                    db.execute(text("""
+                        CREATE TABLE IF NOT EXISTS email_otps (
+                            id SERIAL PRIMARY KEY,
+                            email VARCHAR(255) NOT NULL,
+                            otp VARCHAR(10) NOT NULL,
+                            purpose VARCHAR(50) DEFAULT 'email_verification',
+                            expires_at TIMESTAMP NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                    db.commit()
+                except:
+                    # Table might already exist, continue
+                    pass
+                
                 # Remove any existing OTP for this email
                 db.execute(
                     text("DELETE FROM email_otps WHERE email = :email AND purpose = :purpose"),
@@ -576,6 +593,7 @@ The Eagle's Pride Team
             
         except Exception as e:
             print(f"Error storing OTP: {e}")
+            # Don't fail completely - we can still return the OTP for testing
     
     def _get_stored_otp(self, email: str, purpose: str = "email_verification") -> Optional[dict]:
         """Get stored OTP from database"""
