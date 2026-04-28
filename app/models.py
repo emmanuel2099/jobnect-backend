@@ -429,6 +429,7 @@ class Subscription(Base):
     # Relationships
     user = relationship("User", back_populates="subscriptions")
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+    payments = relationship("Payment", back_populates="subscription")
 
 # Review Model
 class Review(Base):
