@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import User, Job, Company, JobApplication, Notification
+from app.models import User, Job, Company, JobApplication, Notification, JobType, JobLevel
 
 router = APIRouter()
 
@@ -884,3 +884,57 @@ async def get_all_payments(db: Session = Depends(get_db)):
             ]
         }
     }
+
+# Job Type Management
+@router.post("/job-types/create")
+async def create_job_type(name: str, description: str = "", db: Session = Depends(get_db)):
+    """Create a new job type"""
+    try:
+        job_type = JobType(
+            name=name,
+            description=description,
+            is_active=True
+        )
+        db.add(job_type)
+        db.commit()
+        db.refresh(job_type)
+        
+        return {
+            "success": True,
+            "message": f"Job type '{name}' created successfully",
+            "data": {
+                "id": job_type.id,
+                "name": job_type.name,
+                "description": job_type.description
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Job Level Management
+@router.post("/job-levels/create")
+async def create_job_level(name: str, description: str = "", db: Session = Depends(get_db)):
+    """Create a new job level"""
+    try:
+        job_level = JobLevel(
+            name=name,
+            description=description,
+            is_active=True
+        )
+        db.add(job_level)
+        db.commit()
+        db.refresh(job_level)
+        
+        return {
+            "success": True,
+            "message": f"Job level '{name}' created successfully",
+            "data": {
+                "id": job_level.id,
+                "name": job_level.name,
+                "description": job_level.description
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
