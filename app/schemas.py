@@ -272,7 +272,42 @@ class FeedbackResponse(BaseModel):
         from_attributes = True
 
 class FeedbackListResponse(BaseModel):
-    feedbacks: List[FeedbackResponse]
+    feedback: List[FeedbackResponse]
     total: int
     page: int
-    per_page: int
+    pages: int
+
+# Review Schemas
+class ReviewCreate(BaseModel):
+    job_id: Optional[int] = None  # Optional - for general company review
+    company_id: Optional[int] = None  # Required for job-specific review
+    rating: int  # 1-5 stars
+    title: str
+    content: str
+    pros: Optional[str] = None
+    cons: Optional[str] = None
+    is_anonymous: bool = False
+
+class ReviewResponse(BaseModel):
+    id: int
+    job_id: Optional[int]
+    company_id: Optional[int]
+    user_id: int
+    rating: int
+    title: str
+    content: str
+    pros: Optional[str]
+    cons: Optional[str]
+    is_anonymous: bool
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ReviewListResponse(BaseModel):
+    reviews: List[ReviewResponse]
+    total: int
+    page: int
+    pages: int

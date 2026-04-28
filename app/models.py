@@ -412,18 +412,42 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    plan_id = Column(Integer, ForeignKey("subscription_plans.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
     status = Column(String(50), default="active")  # active, expired, cancelled
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)
     is_trial = Column(Boolean, default=False)
-    jobs_posted = Column(Integer, default=0)  # For trial tracking
+    jobs_posted = Column(Integer, default=0)
+    jobs_applied = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="subscriptions")
+    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+
+# Review Model
+class Review(Base):
+    __tablename__ = "reviews"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    rating = Column(Integer, nullable=False)  # 1-5 stars
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    pros = Column(Text, nullable=True)
+    cons = Column(Text, nullable=True)
+    is_anonymous = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)  # Verified by company
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
-    payments = relationship("Payment", back_populates="subscription", cascade="all, delete-orphan")
+    # Relationships
+    company = relationship("Company", back_populates="reviews")
+    user = relationship("User", back_populates="reviews")
+    job = relationship("Job", back_populates="reviews")
 
 # Payment Model
 class Payment(Base):
