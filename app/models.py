@@ -32,6 +32,7 @@ class User(Base):
     social_links = relationship("SocialLink", back_populates="user", cascade="all, delete-orphan")
     kyc = relationship("KYC", back_populates="user", uselist=False, cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="user")
+    subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete-orphan")
 
 # Resume Model (unified)
 class Resume(Base):
