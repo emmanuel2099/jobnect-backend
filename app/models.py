@@ -31,6 +31,7 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     social_links = relationship("SocialLink", back_populates="user", cascade="all, delete-orphan")
     kyc = relationship("KYC", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="user")
 
 # Resume Model (unified)
 class Resume(Base):
@@ -181,6 +182,7 @@ class Company(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     jobs = relationship("Job", back_populates="company", cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="company")
 
 # Job Category Model
 class JobCategory(Base):
@@ -298,6 +300,7 @@ class Job(Base):
     job_level = relationship("JobLevel", back_populates="jobs")
     applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
     bookmarks = relationship("Bookmark", back_populates="job", cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="job")
 
 # Job Application Model
 class JobApplication(Base):
