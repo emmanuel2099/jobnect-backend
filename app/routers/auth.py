@@ -81,19 +81,26 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.refresh(new_user)
         print(f"✅ User created with ID: {new_user.id}")
         
-        # Auto-login: Generate token
-        print("🔑 Generating access token...")
-        access_token = create_access_token(
-            data={"sub": new_user.email, "user_id": new_user.id}
+        # Send OTP verification email instead of immediate login
+        print("� Sending OTP verification email...")
+        from app.email_service import EmailService
+        email_service = EmailService()
+        
+        email_result = email_service.send_verification_email(
+            email=new_user.email,
+            name=new_user.name
         )
-        print("✅ Token generated")
+        
+        print(f"📥 Email result: {email_result}")
         
         response = {
             "success": True,
-            "message": "Registration successful",
+            "message": "Registration successful - Please verify your email",
             "data": {
-                "token": access_token,
-                "token_type": "bearer",
+                "email_sent": email_result.get("email_sent", False),
+                "otp": email_result.get("otp"),
+                "service": email_result.get("service"),
+                "message": email_result.get("message"),
                 "user": {
                     "id": new_user.id,
                     "name": new_user.name,
