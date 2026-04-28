@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import get_current_user
+from app.database import get_db
 from app.models import User, Company, Job, Review
 from app.schemas import ReviewCreate, ReviewResponse, ReviewListResponse
 from typing import List, Optional
