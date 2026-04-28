@@ -133,6 +133,7 @@ def initialize_subscription_plans(db: Session = Depends(get_db)):
             SubscriptionPlan(
                 name="Low Tier",
                 tier="low", 
+                price=3000.0,  # Base price for job seekers
                 duration_months=1,
                 description="Basic access with limited features",
                 is_active=True
@@ -140,6 +141,7 @@ def initialize_subscription_plans(db: Session = Depends(get_db)):
             SubscriptionPlan(
                 name="High Tier",
                 tier="high",
+                price=10000.0,  # Base price for job seekers
                 duration_months=1, 
                 description="Premium access with all features",
                 is_active=True
