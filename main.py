@@ -187,6 +187,7 @@ app.include_router(feedback.router, prefix="/api/v10", tags=["Feedback"])
 
 @app.get("/")
 async def root():
+    # Railway redeploy trigger - v2.1
     return {
         "message": "🎉 JobNect Python API is running! (v2.0)",
         "version": "1.0.0",

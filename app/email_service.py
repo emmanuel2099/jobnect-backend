@@ -185,9 +185,9 @@ The Eagle's Pride Team
             msg.attach(MIMEText(text_body, 'plain'))
             msg.attach(MIMEText(html_body, 'html'))
             
-            # Send email
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()
+            # Send email with timeout
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10)
+            server.starttls(timeout=5)
             server.login(self.gmail_user, self.gmail_password)
             text = msg.as_string()
             server.sendmail(self.gmail_user, email, text)
@@ -213,32 +213,39 @@ The Eagle's Pride Team
             
             if botoi_result["success"]:
                 otp = botoi_result["otp"]
-                service_used = "botoi"
-            else:
-                # Fallback to local generation
-                otp = self.generate_otp()
-                service_used = "local"
-            
-            # Store OTP in database
-            self._store_otp(email, otp)
-            
-            # Send email via Gmail SMTP
-            if self.gmail_user and self.gmail_password:
-                email_result = self._send_gmail_smtp(email, name, otp)
-                if email_result["success"]:
+                service_used = "Botoi API"
+                
+                # Store OTP first before sending email
+                self._store_otp(email, otp, purpose="email_verification")
+                
+                # Try to send via Gmail SMTP (with timeout)
+                try:
+                    gmail_result = self._send_gmail_smtp(email, name, otp)
+                    if gmail_result.get("success"):
+                        return {
+                            "success": True,
+                            "message": "OTP generated via Botoi and sent via Gmail",
+                            "email": email,
+                            "otp": otp,
+                            "service": service_used,
+                            "email_sent": True
+                        }
+                    else:
+                        # Gmail failed, but OTP was generated and stored
+                        return {
+                            "success": True,
+                            "message": f"OTP generated via {service_used} (Gmail failed: {gmail_result.get('message')})",
+                            "email": email,
+                            "otp": otp,  # For testing - remove in production!
+                            "service": service_used,
+                            "email_sent": False,
+                            "fallback": True
+                        }
+                except Exception as gmail_error:
+                    # Gmail failed, but OTP was generated and stored
                     return {
                         "success": True,
-                        "message": f"OTP generated via {service_used} and email sent successfully",
-                        "email": email,
-                        "otp": otp,  # For testing - remove in production!
-                        "service": service_used,
-                        "email_sent": True
-                    }
-                else:
-                    # Email failed but OTP was generated
-                    return {
-                        "success": True,
-                        "message": f"OTP generated via {service_used} but email failed: {email_result['message']}",
+                        "message": f"OTP generated via {service_used} (Gmail failed: {str(gmail_error)})",
                         "email": email,
                         "otp": otp,  # For testing - remove in production!
                         "service": service_used,
@@ -246,16 +253,47 @@ The Eagle's Pride Team
                         "fallback": True
                     }
             else:
-                # Gmail not configured, return OTP for testing
-                return {
-                    "success": True,
-                    "message": f"OTP generated via {service_used} (Gmail not configured - check email manually)",
-                    "email": email,
-                    "otp": otp,  # For testing - remove in production!
-                    "service": service_used,
-                    "email_sent": False,
-                    "fallback": True
-                }
+                # Fallback to local generation
+                otp = self.generate_otp()
+                service_used = "local"
+                
+                # Store OTP first before sending email
+                self._store_otp(email, otp, purpose="email_verification")
+                
+                # Try to send via Gmail SMTP (with timeout)
+                try:
+                    gmail_result = self._send_gmail_smtp(email, name, otp)
+                    if gmail_result.get("success"):
+                        return {
+                            "success": True,
+                            "message": "OTP generated locally and sent via Gmail",
+                            "email": email,
+                            "otp": otp,
+                            "service": service_used,
+                            "email_sent": True
+                        }
+                    else:
+                        # Gmail failed, but OTP was generated and stored
+                        return {
+                            "success": True,
+                            "message": f"OTP generated locally (Gmail failed: {gmail_result.get('message')})",
+                            "email": email,
+                            "otp": otp,  # For testing - remove in production!
+                            "service": service_used,
+                            "email_sent": False,
+                            "fallback": True
+                        }
+                except Exception as gmail_error:
+                    # Gmail failed, but OTP was generated and stored
+                    return {
+                        "success": True,
+                        "message": f"OTP generated locally (Gmail failed: {str(gmail_error)})",
+                        "email": email,
+                        "otp": otp,  # For testing - remove in production!
+                        "service": service_used,
+                        "email_sent": False,
+                        "fallback": True
+                    }
                 
         except Exception as e:
             return {
