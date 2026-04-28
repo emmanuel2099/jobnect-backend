@@ -206,35 +206,54 @@ The Eagle's Pride Team
             }
 
     def send_verification_email(self, email: str, name: str = "User") -> dict:
-        """Send email verification OTP using Botoi API first, Gmail as backup"""
+        """Send email verification OTP using Botoi API for OTP and Gmail SMTP for email"""
         try:
-            # Try Botoi API first
+            # Try Botoi API first for OTP generation
             botoi_result = self._generate_botoi_otp()
             
             if botoi_result["success"]:
                 otp = botoi_result["otp"]
-                
-                # Store OTP in database
-                self._store_otp(email, otp)
-                
-                return {
-                    "success": True,
-                    "message": "OTP generated successfully via Botoi API",
-                    "email": email,
-                    "otp": otp,  # For testing - remove in production!
-                    "service": "botoi"
-                }
+                service_used = "botoi"
             else:
                 # Fallback to local generation
                 otp = self.generate_otp()
-                self._store_otp(email, otp)
-                
+                service_used = "local"
+            
+            # Store OTP in database
+            self._store_otp(email, otp)
+            
+            # Send email via Gmail SMTP
+            if self.gmail_user and self.gmail_password:
+                email_result = self._send_gmail_smtp(email, name, otp)
+                if email_result["success"]:
+                    return {
+                        "success": True,
+                        "message": f"OTP generated via {service_used} and email sent successfully",
+                        "email": email,
+                        "otp": otp,  # For testing - remove in production!
+                        "service": service_used,
+                        "email_sent": True
+                    }
+                else:
+                    # Email failed but OTP was generated
+                    return {
+                        "success": True,
+                        "message": f"OTP generated via {service_used} but email failed: {email_result['message']}",
+                        "email": email,
+                        "otp": otp,  # For testing - remove in production!
+                        "service": service_used,
+                        "email_sent": False,
+                        "fallback": True
+                    }
+            else:
+                # Gmail not configured, return OTP for testing
                 return {
                     "success": True,
-                    "message": f"Verification code generated locally: {otp} (Botoi failed: {botoi_result['message']})",
+                    "message": f"OTP generated via {service_used} (Gmail not configured - check email manually)",
                     "email": email,
                     "otp": otp,  # For testing - remove in production!
-                    "service": "local",
+                    "service": service_used,
+                    "email_sent": False,
                     "fallback": True
                 }
                 
@@ -243,7 +262,6 @@ The Eagle's Pride Team
                 "success": False,
                 "message": f"Email service error: {str(e)}"
             }
-    
     
     def verify_email_otp(self, email: str, otp: str) -> dict:
         """Verify the email OTP code"""
