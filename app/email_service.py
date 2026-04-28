@@ -458,9 +458,9 @@ The Eagle's Pride Team
     def _store_otp(self, email: str, otp: str, purpose: str = "email_verification"):
         """Store OTP in database with expiration - creates table if needed"""
         try:
-            from .database import get_db
+            from .database import SessionLocal
             from sqlalchemy import text
-            db = next(get_db())
+            db = SessionLocal()
             
             try:
                 # Try to create table if it doesn't exist
@@ -510,9 +510,9 @@ The Eagle's Pride Team
     def get_stored_otp(self, email: str, purpose: str = "email_verification") -> Optional[dict]:
         """Get stored OTP from database"""
         try:
-            from .database import get_db
+            from .database import SessionLocal
             from sqlalchemy import text
-            db = next(get_db())
+            db = SessionLocal()
             
             try:
                 result = db.execute(
@@ -537,9 +537,9 @@ The Eagle's Pride Team
     def remove_otp(self, email: str, purpose: str = "email_verification"):
         """Remove OTP from database after successful verification"""
         try:
-            from .database import get_db
+            from .database import SessionLocal
             from sqlalchemy import text
-            db = next(get_db())
+            db = SessionLocal()
             
             try:
                 db.execute(
