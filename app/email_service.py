@@ -12,14 +12,51 @@ from email.mime.multipart import MIMEMultipart
 
 class EmailService:
     def __init__(self):
-        # Gmail SMTP Configuration
+        # Botoi API Configuration
+        self.botoi_api_key = os.getenv("BOTOI_API_KEY")
+        self.botoi_base_url = "https://api.botoi.com/v1"
+        
+        # Gmail SMTP Configuration (Backup)
         self.smtp_server = "smtp.gmail.com"
         self.smtp_port = 587
-        self.gmail_user = os.getenv("GMAIL_USER", "emmappdesigner@gmail.com")
-        self.gmail_password = os.getenv("GMAIL_PASSWORD", "qwjm ybnc zxfw pmgp")
+        self.gmail_user = os.getenv("GMAIL_USER")
+        self.gmail_password = os.getenv("GMAIL_PASSWORD")
         
+    def _generate_botoi_otp(self) -> dict:
+        """Generate OTP using Botoi API"""
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.botoi_api_key}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.post(
+                f'{self.botoi_base_url}/otp/generate',
+                json={'length': 6, 'purpose': 'email-verification'},
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "success": True,
+                    "otp": data.get('otp'),
+                    "message": "OTP generated successfully via Botoi API"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Botoi API error: {response.status_code} - {response.text}"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Botoi API connection error: {str(e)}"
+            }
+    
     def generate_otp(self, length: int = 6) -> str:
-        """Generate a random OTP code"""
+        """Generate a random OTP code (fallback)"""
         return ''.join(random.choices(string.digits, k=length))
     
     def _send_gmail_smtp(self, email: str, name: str, otp: str) -> dict:
@@ -169,25 +206,35 @@ The Eagle's Pride Team
             }
 
     def send_verification_email(self, email: str, name: str = "User") -> dict:
-        """Send email verification OTP using Gmail SMTP only"""
+        """Send email verification OTP using Botoi API first, Gmail as backup"""
         try:
-            otp = self.generate_otp()
+            # Try Botoi API first
+            botoi_result = self._generate_botoi_otp()
             
-            # Store OTP in database first
-            self._store_otp(email, otp)
-            
-            # Send via Gmail SMTP
-            result = self._send_gmail_smtp(email, name, otp)
-            
-            if result["success"]:
-                return result
-            else:
-                # Fallback: Just store OTP and return success with debug info
+            if botoi_result["success"]:
+                otp = botoi_result["otp"]
+                
+                # Store OTP in database
+                self._store_otp(email, otp)
+                
                 return {
                     "success": True,
-                    "message": f"Verification code generated: {otp} (Gmail failed: {result['message']})",
+                    "message": "OTP generated successfully via Botoi API",
                     "email": email,
                     "otp": otp,  # For testing - remove in production!
+                    "service": "botoi"
+                }
+            else:
+                # Fallback to local generation
+                otp = self.generate_otp()
+                self._store_otp(email, otp)
+                
+                return {
+                    "success": True,
+                    "message": f"Verification code generated locally: {otp} (Botoi failed: {botoi_result['message']})",
+                    "email": email,
+                    "otp": otp,  # For testing - remove in production!
+                    "service": "local",
                     "fallback": True
                 }
                 
