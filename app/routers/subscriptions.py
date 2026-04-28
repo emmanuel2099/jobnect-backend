@@ -103,55 +103,60 @@ def get_my_subscription(
 def initialize_subscription_plans(db: Session = Depends(get_db)):
     """Initialize subscription plans with default pricing"""
     
-    # Check if plans already exist
-    existing_plans = db.query(SubscriptionPlan).all()
-    if existing_plans:
-        # Clear existing plans
-        db.query(SubscriptionPlan).delete()
-        db.commit()
-    
-    # Add new subscription plans
-    plans = [
-        SubscriptionPlan(
-            name="Low Tier",
-            tier="low", 
-            duration_months=1,
-            description="Basic access with limited features",
-            is_active=True
-        ),
-        SubscriptionPlan(
-            name="High Tier",
-            tier="high",
-            duration_months=1, 
-            description="Premium access with all features",
-            is_active=True
-        )
-    ]
-    
-    for plan in plans:
-        db.add(plan)
-    
-    db.commit()
-    
-    return {
-        "message": "Subscription plans initialized successfully",
-        "plans": [
-            {
-                "name": "Low Tier",
-                "tier": "low",
-                "job_seeker_price": 3000,
-                "company_price": 10000,
-                "duration_months": 1
-            },
-            {
-                "name": "High Tier", 
-                "tier": "high",
-                "job_seeker_price": 10000,
-                "company_price": 20000,
-                "duration_months": 1
-            }
+    try:
+        # Check if plans already exist
+        existing_plans = db.query(SubscriptionPlan).all()
+        if existing_plans:
+            # Clear existing plans
+            db.query(SubscriptionPlan).delete()
+            db.commit()
+        
+        # Add new subscription plans
+        plans = [
+            SubscriptionPlan(
+                name="Low Tier",
+                tier="low", 
+                duration_months=1,
+                description="Basic access with limited features",
+                is_active=True
+            ),
+            SubscriptionPlan(
+                name="High Tier",
+                tier="high",
+                duration_months=1, 
+                description="Premium access with all features",
+                is_active=True
+            )
         ]
-    }
+        
+        for plan in plans:
+            db.add(plan)
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Subscription plans initialized successfully",
+            "plans": [
+                {
+                    "name": "Low Tier",
+                    "tier": "low",
+                    "job_seeker_price": 3000,
+                    "company_price": 10000,
+                    "duration_months": 1
+                },
+                {
+                    "name": "High Tier", 
+                    "tier": "high",
+                    "job_seeker_price": 10000,
+                    "company_price": 20000,
+                    "duration_months": 1
+                }
+            ]
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to initialize plans: {str(e)}")
 
 # Check if user can post job or apply to job
 @router.post("/check-access")
