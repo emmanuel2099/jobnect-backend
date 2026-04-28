@@ -98,6 +98,23 @@ def get_my_subscription(
         return trial
     return subscription
 
+# Create subscription tables (admin endpoint)
+@router.post("/create-tables")
+def create_subscription_tables(db: Session = Depends(get_db)):
+    """Create subscription tables in the database"""
+    
+    try:
+        # Create tables using SQLAlchemy
+        from app.models import Base
+        Base.metadata.create_all(bind=db.get_bind(), tables=[SubscriptionPlan.__table__, Subscription.__table__])
+        
+        return {
+            "success": True,
+            "message": "Subscription tables created successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create tables: {str(e)}")
+
 # Initialize subscription plans (admin endpoint)
 @router.post("/initialize-plans")
 def initialize_subscription_plans(db: Session = Depends(get_db)):
