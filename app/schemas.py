@@ -243,3 +243,36 @@ class CompanyProfileUpdate(BaseModel):
     description: str
     location: str
     city: Optional[str] = None
+
+# Feedback Schemas
+class FeedbackCreate(BaseModel):
+    company_id: int
+    job_id: Optional[int] = None
+    rating: int  # 1-5 rating
+    feedback_text: str
+    feedback_type: Optional[str] = "general"  # general, interview, application, etc.
+    is_anonymous: Optional[bool] = False
+    is_public: Optional[bool] = False
+
+class FeedbackResponse(BaseModel):
+    id: int
+    job_seeker_id: int
+    company_id: int
+    job_id: Optional[int]
+    rating: int
+    feedback_text: str
+    feedback_type: str
+    is_anonymous: bool
+    is_public: bool
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class FeedbackListResponse(BaseModel):
+    feedbacks: List[FeedbackResponse]
+    total: int
+    page: int
+    per_page: int

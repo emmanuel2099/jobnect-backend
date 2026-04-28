@@ -470,3 +470,25 @@ class Message(Base):
     
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")
+
+# Feedback Model
+class Feedback(Base):
+    __tablename__ = "feedback"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    job_seeker_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"))
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"))  # Optional: feedback about specific job
+    rating = Column(Integer, nullable=False)  # 1-5 rating
+    feedback_text = Column(Text, nullable=False)
+    feedback_type = Column(String(50), default="general")  # general, interview, application, etc.
+    is_anonymous = Column(Boolean, default=False)
+    is_public = Column(Boolean, default=False)  # Whether feedback can be shown publicly
+    status = Column(String(50), default="pending")  # pending, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    job_seeker = relationship("User", foreign_keys=[job_seeker_id])
+    company = relationship("Company")
+    job = relationship("Job")
