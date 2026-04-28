@@ -458,9 +458,16 @@ The Eagle's Pride Team
     def _store_otp(self, email: str, otp: str, purpose: str = "email_verification"):
         """Store OTP in database with expiration - creates table if needed"""
         try:
-            from .database import SessionLocal
+            # Try to use production database first, fallback to local
+            from .database import get_db, SessionLocal
             from sqlalchemy import text
-            db = SessionLocal()
+            
+            try:
+                # Try production database
+                db = next(get_db())
+            except:
+                # Fallback to local database
+                db = SessionLocal()
             
             try:
                 # Try to create table if it doesn't exist
