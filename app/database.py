@@ -24,7 +24,7 @@ def get_db():
 
 def init_db():
     """Initialize database with default data"""
-    from app.models import JobCategory, City, JobType, JobLevel, EducationLevel, Skill, Designation, AppSetting, Company, Job
+    from app.models import JobCategory, City, JobType, JobLevel, EducationLevel, Skill, Designation, AppSetting, Company, Job, SubscriptionPlan
     from datetime import date, timedelta
     
     db = SessionLocal()
@@ -225,6 +225,27 @@ def init_db():
         db.add_all(jobs_data)
         db.commit()
         print("✅ Sample jobs added")
+        
+        # Add subscription plans
+        subscription_plans = [
+            SubscriptionPlan(
+                name="Low Tier",
+                tier="low",
+                duration_months=1,
+                description="Basic access with limited features",
+                is_active=True
+            ),
+            SubscriptionPlan(
+                name="High Tier",
+                tier="high",
+                duration_months=1,
+                description="Premium access with all features",
+                is_active=True
+            )
+        ]
+        db.add_all(subscription_plans)
+        db.commit()
+        print("✅ Subscription plans added")
         
     except Exception as e:
         print(f"❌ Error inserting default data: {e}")
