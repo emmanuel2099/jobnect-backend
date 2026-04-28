@@ -22,6 +22,8 @@ async def get_recent_jobs(limit: int = Query(10, ge=1, le=50), db: Session = Dep
         company = db.query(Company).filter(Company.id == job.company_id).first()
         category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
         city = db.query(City).filter(City.id == job.city_id).first() if job.city_id else None
+        job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
+        job_level = db.query(JobLevel).filter(JobLevel.id == job.job_level_id).first() if job.job_level_id else None
         
         jobs_data.append({
             "id": job.id,
@@ -50,7 +52,15 @@ async def get_recent_jobs(limit: int = Query(10, ge=1, le=50), db: Session = Dep
             "city": {
                 "id": city.id,
                 "name": city.name
-            } if city else None
+            } if city else None,
+            "job_type": {
+                "id": job_type.id,
+                "name": job_type.name
+            } if job_type else None,
+            "job_level": {
+                "id": job_level.id,
+                "name": job_level.name
+            } if job_level else None
         })
     
     return {
@@ -70,6 +80,8 @@ async def get_popular_jobs(limit: int = Query(10, ge=1, le=50), db: Session = De
     for job in jobs:
         company = db.query(Company).filter(Company.id == job.company_id).first()
         category = db.query(JobCategory).filter(JobCategory.id == job.category_id).first() if job.category_id else None
+        job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
+        job_level = db.query(JobLevel).filter(JobLevel.id == job.job_level_id).first() if job.job_level_id else None
         
         jobs_data.append({
             "id": job.id,
@@ -88,7 +100,15 @@ async def get_popular_jobs(limit: int = Query(10, ge=1, le=50), db: Session = De
             "category": {
                 "id": category.id,
                 "name": category.name
-            } if category else None
+            } if category else None,
+            "job_type": {
+                "id": job_type.id,
+                "name": job_type.name
+            } if job_type else None,
+            "job_level": {
+                "id": job_level.id,
+                "name": job_level.name
+            } if job_level else None
         })
     
     return {
