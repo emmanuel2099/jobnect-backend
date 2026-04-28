@@ -40,7 +40,7 @@ class EmailService:
                 data = response.json()
                 return {
                     "success": True,
-                    "otp": data.get('otp'),
+                    "otp": data.get('data', {}).get('code'),
                     "message": "OTP generated successfully via Botoi API"
                 }
             else:
