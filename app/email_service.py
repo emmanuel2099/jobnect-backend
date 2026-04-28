@@ -458,9 +458,9 @@ The Eagle's Pride Team
     def _store_otp(self, email: str, otp: str, purpose: str = "email_verification"):
         """Store OTP in database with expiration - creates table if needed"""
         try:
-            from .database import SessionLocal
+            from .database import get_db
             from sqlalchemy import text
-            db = SessionLocal()
+            db = next(get_db())
             
             try:
                 # Try to create table if it doesn't exist
@@ -510,9 +510,9 @@ The Eagle's Pride Team
     def get_stored_otp(self, email: str, purpose: str = "email_verification") -> Optional[dict]:
         """Get stored OTP from database"""
         try:
-            from .database import SessionLocal
+            from .database import get_db
             from sqlalchemy import text
-            db = SessionLocal()
+            db = next(get_db())
             
             try:
                 result = db.execute(
@@ -525,10 +525,11 @@ The Eagle's Pride Team
                         "otp": result[0],
                         "expires_at": result[1]
                     }
-                return None
+                else:
+                    return None
             finally:
                 db.close()
-            
+        
         except Exception as e:
             print(f"Error getting OTP: {e}")
             return None
@@ -536,9 +537,9 @@ The Eagle's Pride Team
     def remove_otp(self, email: str, purpose: str = "email_verification"):
         """Remove OTP from database after successful verification"""
         try:
-            from .database import SessionLocal
+            from .database import get_db
             from sqlalchemy import text
-            db = SessionLocal()
+            db = next(get_db())
             
             try:
                 db.execute(
@@ -548,7 +549,7 @@ The Eagle's Pride Team
                 db.commit()
             finally:
                 db.close()
-            
+        
         except Exception as e:
             print(f"Error removing OTP: {e}")
 
