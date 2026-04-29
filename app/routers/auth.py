@@ -81,65 +81,18 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.refresh(new_user)
         print(f"✅ User created with ID: {new_user.id}")
         
-        # Send OTP verification email instead of immediate login
-        print("🔥 Sending OTP verification email...")
-        from app.email_service import EmailService
-        import signal
-        import time
-        
-        email_result = {"success": False, "message": "Email service timeout"}
-        
-        # Add timeout wrapper to prevent hanging
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Email service timeout")
-        
-        try:
-            # Set timeout for email service
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(8)  # 8 second timeout
-            
-            email_service = EmailService()
-            email_result = email_service.send_verification_email(
-                email=new_user.email,
-                name=new_user.name
-            )
-            
-            signal.alarm(0)  # Cancel timeout
-            print(f"📥 Email result: {email_result}")
-            
-        except TimeoutError:
-            print("⏰ Email service timeout, using fallback")
-            email_result = {
-                "success": True,
-                "message": "Registration successful - Email service timeout, using fallback OTP",
-                "email": new_user.email,
-                "otp": "123456",  # Fallback OTP for testing
-                "service": "fallback",
-                "email_sent": False,
-                "fallback": True
-            }
-        except Exception as e:
-            print(f"❌ Email service error: {str(e)}")
-            email_result = {
-                "success": True,
-                "message": f"Registration successful - Email service error: {str(e)}",
-                "email": new_user.email,
-                "otp": "123456",  # Fallback OTP for testing
-                "service": "fallback",
-                "email_sent": False,
-                "fallback": True
-            }
-        finally:
-            signal.alarm(0)  # Ensure timeout is cancelled
+        # Generate access token for immediate login (OTP will be post-registration KYC)
+        print("🔑 Generating access token for immediate login...")
+        access_token = create_access_token(
+            data={"sub": new_user.email, "user_id": new_user.id}
+        )
         
         response = {
             "success": True,
-            "message": "Registration successful - Please verify your email",
+            "message": "Registration successful - Welcome to Eagle's Pride!",
             "data": {
-                "email_sent": email_result.get("email_sent", False),
-                "otp": email_result.get("otp"),
-                "service": email_result.get("service"),
-                "message": email_result.get("message"),
+                "token": access_token,
+                "token_type": "bearer",
                 "user": {
                     "id": new_user.id,
                     "name": new_user.name,
@@ -148,11 +101,14 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                     "company": new_user.company,
                     "companyLogo": new_user.company_logo,
                     "userType": new_user.user_type,
-                    "profilePhoto": new_user.profile_photo
-                }
+                    "profilePhoto": new_user.profile_photo,
+                    "email_verified": False,  # KYC pending
+                    "kyc_required": True  # User must complete KYC
+                },
+                "kyc_message": "Please complete email verification to access all features"
             }
         }
-        print("✅ Registration successful, returning response")
+        print("✅ Registration successful with immediate login, KYC pending")
         return response
         
     except Exception as e:
