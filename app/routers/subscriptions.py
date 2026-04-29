@@ -199,6 +199,47 @@ def check_access(
     
     return result
 
+# Health check endpoint that also fixes database
+@router.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    """Health check that also fixes database issues"""
+    try:
+        from sqlalchemy import text
+        
+        # Check if jobs_applied column exists
+        result = db.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='subscriptions' AND column_name='jobs_applied';
+        """))
+        
+        if not result.fetchone():
+            # Add the missing column
+            print("🔧 Adding jobs_applied column to subscriptions table...")
+            db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER DEFAULT 0;"))
+            db.commit()
+            print("✅ jobs_applied column added successfully!")
+            
+            return {
+                "success": True,
+                "message": "Database fixed successfully - jobs_applied column added",
+                "status": "healthy"
+            }
+        else:
+            return {
+                "success": True,
+                "message": "Database already has jobs_applied column",
+                "status": "healthy"
+            }
+            
+    except Exception as e:
+        print(f"❌ Error in health check: {e}")
+        return {
+            "success": False,
+            "message": f"Error: {e}",
+            "status": "unhealthy"
+        }
+
 # Emergency database fix endpoint
 @router.get("/fix-database")
 def fix_database(db: Session = Depends(get_db)):
