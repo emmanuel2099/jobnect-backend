@@ -199,6 +199,25 @@ def check_access(
     
     return result
 
+# Test user data endpoint
+@router.get("/test-user-data")
+def test_user_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Test endpoint to check user data"""
+    return {
+        "success": True,
+        "user_data": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "phone": current_user.phone,
+            "name": current_user.name,
+            "user_type": current_user.user_type,
+            "is_active": current_user.is_active
+        }
+    }
+
 # Initiate payment
 @router.post("/initiate-payment")
 def initiate_payment(
