@@ -75,6 +75,20 @@ async def lifespan(app: FastAPI):
                     print("✅ Currency column added successfully")
                 else:
                     print("✅ Currency column already exists")
+                
+                # Check if jobs_applied column exists in subscriptions table
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='subscriptions' AND column_name='jobs_applied';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding jobs_applied column to subscriptions table...")
+                    db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER DEFAULT 0;"))
+                    db.commit()
+                    print("✅ jobs_applied column added successfully")
+                else:
+                    print("✅ jobs_applied column already exists")
             except Exception as e:
                 print(f"⚠️  Warning: Could not add columns: {e}")
                 db.rollback()
