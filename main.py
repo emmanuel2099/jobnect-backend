@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from datetime import datetime
 import uvicorn
 import os
 
@@ -194,17 +195,57 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS middleware - Enhanced for web support
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "*",  # Allow all origins during development
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "https://localhost:*",
+        "https://127.0.0.1:*",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "*",
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
+    expose_headers=["*"],
 )
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Root endpoint for health check
+@app.get("/")
+async def root():
+    return {
+        "message": "JobNect API is running",
+        "version": "1.0.0",
+        "status": "healthy",
+        "endpoints": {
+            "auth": "/api/v10/login",
+            "job_seeker_auth": "/api/v10/job-seeker/login",
+            "company_auth": "/api/v10/company/login",
+            "universal_login": "/api/v10/universal-login",
+            "health": "/health"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
+    }
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v10", tags=["Authentication"])
