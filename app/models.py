@@ -418,12 +418,14 @@ class SocialLink(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
     company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     platform = Column(String(100), nullable=False)
     url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="social_links")
+    job_seeker = relationship("JobSeeker", back_populates="social_links")
     company_user = relationship("CompanyUser", back_populates="social_links")
 
 # KYC Model
