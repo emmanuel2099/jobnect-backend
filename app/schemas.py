@@ -14,6 +14,56 @@ class UserRegister(BaseModel):
     user_type: Optional[str] = None
     account_type: Optional[str] = None
 
+# Job Seeker Auth Schemas
+class JobSeekerRegister(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    password: str
+    password_confirmation: str
+
+class JobSeekerLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class JobSeekerResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str
+    profilePhoto: Optional[str]
+    userType: str = "applicant"
+    
+    class Config:
+        from_attributes = True
+
+# Company User Auth Schemas
+class CompanyUserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    password: str
+    password_confirmation: str
+    company_name: str
+    company_logo: Optional[str] = None
+
+class CompanyUserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class CompanyUserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str
+    company_name: str
+    companyLogo: Optional[str]
+    profilePhoto: Optional[str]
+    userType: str = "company"
+    
+    class Config:
+        from_attributes = True
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

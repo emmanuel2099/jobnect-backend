@@ -3,7 +3,61 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
 
-# User Model
+# Job Seeker Model
+class JobSeeker(Base):
+    __tablename__ = "job_seekers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    phone = Column(String(20), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    profile_photo = Column(Text)
+    is_active = Column(Boolean, default=True)
+    is_online = Column(Boolean, default=False)
+    is_deactivated = Column(Boolean, default=False)
+    deactivated_at = Column(DateTime)
+    last_login = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    resume = relationship("Resume", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
+    applications = relationship("JobApplication", back_populates="job_seeker", cascade="all, delete-orphan")
+    bookmarks = relationship("Bookmark", back_populates="job_seeker", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="job_seeker", cascade="all, delete-orphan")
+    social_links = relationship("SocialLink", back_populates="job_seeker", cascade="all, delete-orphan")
+    kyc = relationship("KYC", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="job_seeker")
+    subscriptions = relationship("Subscription", back_populates="job_seeker", cascade="all, delete-orphan")
+
+# Company User Model  
+class CompanyUser(Base):
+    __tablename__ = "company_users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    phone = Column(String(20), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    company_name = Column(String(255), nullable=False)
+    company_logo = Column(Text)
+    profile_photo = Column(Text)
+    is_active = Column(Boolean, default=True)
+    is_online = Column(Boolean, default=False)
+    is_deactivated = Column(Boolean, default=False)
+    deactivated_at = Column(DateTime)
+    last_login = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    company = relationship("Company", back_populates="company_user", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="company_user", cascade="all, delete-orphan")
+    social_links = relationship("SocialLink", back_populates="company_user", cascade="all, delete-orphan")
+    subscriptions = relationship("Subscription", back_populates="company_user", cascade="all, delete-orphan")
+
+# Legacy User Model (kept for backward compatibility)
 class User(Base):
     __tablename__ = "users"
     
@@ -13,13 +67,13 @@ class User(Base):
     phone = Column(String(20), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     company = Column(String(255))
-    company_logo = Column(Text)  # Company logo URL
-    user_type = Column(String(50), default="applicant")  # applicant or company
+    company_logo = Column(Text)
+    user_type = Column(String(50), default="applicant")
     profile_photo = Column(Text)
     is_active = Column(Boolean, default=True)
     is_online = Column(Boolean, default=False)
-    is_deactivated = Column(Boolean, default=False)  # Account deactivation status
-    deactivated_at = Column(DateTime)  # When account was deactivated
+    is_deactivated = Column(Boolean, default=False)
+    deactivated_at = Column(DateTime)
     last_login = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -40,6 +94,7 @@ class Resume(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"), unique=True)
     
     # Personal Info
     father_name = Column(String(255))
@@ -73,6 +128,7 @@ class Resume(Base):
     
     # Relationships
     user = relationship("User", back_populates="resume")
+    job_seeker = relationship("JobSeeker", back_populates="resume")
     experiences = relationship("Experience", back_populates="resume", cascade="all, delete-orphan")
     educations = relationship("Education", back_populates="resume", cascade="all, delete-orphan")
     trainings = relationship("Training", back_populates="resume", cascade="all, delete-orphan")
@@ -167,6 +223,7 @@ class Company(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
     logo = Column(Text)
     description = Column(Text)
@@ -182,6 +239,9 @@ class Company(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationships
+    user = relationship("User", back_populates="company")
+    company_user = relationship("CompanyUser", back_populates="company")
     jobs = relationship("Job", back_populates="company", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="company")
 
@@ -309,6 +369,7 @@ class JobApplication(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"))
     cover_letter = Column(Text)
     resume_file = Column(Text)
@@ -316,6 +377,7 @@ class JobApplication(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="applications")
+    job_seeker = relationship("JobSeeker", back_populates="applications")
     job = relationship("Job", back_populates="applications")
 
 # Bookmark Model
@@ -324,10 +386,12 @@ class Bookmark(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="bookmarks")
+    job_seeker = relationship("JobSeeker", back_populates="bookmarks")
     job = relationship("Job", back_populates="bookmarks")
 
 # Notification Model
@@ -336,6 +400,7 @@ class Notification(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     notification_type = Column(String(50))
@@ -343,6 +408,7 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="notifications")
+    company_user = relationship("CompanyUser", back_populates="notifications")
 
 # Social Link Model
 class SocialLink(Base):
@@ -350,11 +416,13 @@ class SocialLink(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     platform = Column(String(100), nullable=False)
     url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="social_links")
+    company_user = relationship("CompanyUser", back_populates="social_links")
 
 # KYC Model
 class KYC(Base):
@@ -362,6 +430,7 @@ class KYC(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"), unique=True)
     first_name = Column(String(255), nullable=False)
     last_name = Column(String(255), nullable=False)
     document_type = Column(String(100), nullable=False)
@@ -372,6 +441,7 @@ class KYC(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = relationship("User", back_populates="kyc")
+    job_seeker = relationship("JobSeeker", back_populates="kyc")
 
 # App Setting Model
 class AppSetting(Base):
@@ -417,6 +487,8 @@ class Subscription(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id"), nullable=False)
+    company_user_id = Column(Integer, ForeignKey("company_users.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
     status = Column(String(50), default="active")  # active, expired, cancelled
     start_date = Column(DateTime, default=datetime.utcnow)
@@ -428,6 +500,8 @@ class Subscription(Base):
     
     # Relationships
     user = relationship("User", back_populates="subscriptions")
+    job_seeker = relationship("JobSeeker", back_populates="subscriptions")
+    company_user = relationship("CompanyUser", back_populates="subscriptions")
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
     payments = relationship("Payment", back_populates="subscription")
 
@@ -438,6 +512,7 @@ class Review(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id"), nullable=False)
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     rating = Column(Integer, nullable=False)  # 1-5 stars
     title = Column(String(200), nullable=False)
@@ -452,6 +527,7 @@ class Review(Base):
     # Relationships
     company = relationship("Company", back_populates="reviews")
     user = relationship("User", back_populates="reviews")
+    job_seeker = relationship("JobSeeker", back_populates="reviews")
     job = relationship("Job", back_populates="reviews")
 
 # Payment Model
@@ -460,6 +536,8 @@ class Payment(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
+    company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     subscription_id = Column(Integer, ForeignKey("subscriptions.id", ondelete="CASCADE"))
     amount = Column(Float, nullable=False)
     currency = Column(String(10), default="NGN")
@@ -478,6 +556,10 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     user1_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     user2_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker1_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
+    job_seeker2_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
+    company_user1_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
+    company_user2_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -492,6 +574,10 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"))
     sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     receiver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_sender_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
+    job_seeker_receiver_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
+    company_user_sender_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
+    company_user_receiver_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
