@@ -42,6 +42,16 @@ class FundsavaeraService:
             Dict with payment link and reference
         """
         
+        print(f"🔵 Initializing Fundsavaera payment:")
+        print(f"  - Amount: {amount}")
+        print(f"  - Email: {email}")
+        print(f"  - Phone: {phone}")
+        print(f"  - Name: {name}")
+        print(f"  - TX Ref: {tx_ref}")
+        print(f"  - Pub Key: {self.pub_key[:20]}...")
+        print(f"  - Sec Key: {self.sec_key[:20]}...")
+        print(f"  - Base URL: {self.base_url}")
+        
         url = f"{self.base_url}/payment/initialize"
         
         payload = {
@@ -66,26 +76,42 @@ class FundsavaeraService:
         }
         
         try:
+            print(f"🔵 Making request to: {url}")
+            print(f"🔵 Payload: {json.dumps(payload, indent=2)}")
+            print(f"🔵 Headers: {headers}")
+            
             response = requests.post(url, json=payload, headers=headers, timeout=30)
+            
+            print(f"🔵 Response Status: {response.status_code}")
+            print(f"🔵 Response Body: {response.text}")
             
             if response.status_code == 200:
                 data = response.json()
+                print(f"🔵 Parsed Response: {json.dumps(data, indent=2)}")
+                
                 if data.get("status") == "success":
+                    payment_link = data.get("data", {}).get("payment_url")
+                    print(f"🔵 Payment Link: {payment_link}")
+                    
                     return {
                         "success": True,
-                        "payment_link": data.get("data", {}).get("payment_url"),
+                        "payment_link": payment_link,
                         "tx_ref": tx_ref,
                         "access_code": data.get("data", {}).get("access_code")
                     }
                 else:
+                    error_msg = data.get("message", "Payment initialization failed")
+                    print(f"🔵 Payment Failed: {error_msg}")
                     return {
                         "success": False,
-                        "message": data.get("message", "Payment initialization failed")
+                        "message": error_msg
                     }
             else:
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+                print(f"🔵 HTTP Error: {error_msg}")
                 return {
                     "success": False,
-                    "message": f"HTTP {response.status_code}: {response.text}"
+                    "message": error_msg
                 }
                 
         except requests.exceptions.Timeout:

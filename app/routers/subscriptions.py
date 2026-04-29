@@ -222,16 +222,16 @@ def initiate_payment(
         currency="NGN",
         status="pending",
         transaction_ref=f"SUB-{uuid.uuid4().hex[:12].upper()}",
-        payment_method="fundsavaera"
+        payment_method="flutterwave"
     )
     
     db.add(payment)
     db.commit()
     
-    # Initialize Fundsavaera payment
-    from app.fundsavaera_service import fundsavaera_service
+    # Initialize Flutterwave payment
+    from app.flutterwave_service import flutterwave_service
     
-    payment_result = fundsavaera_service.initialize_payment(
+    payment_result = flutterwave_service.initialize_payment(
         amount=plan.price,
         email=current_user.email,
         phone=current_user.phone,
@@ -265,8 +265,8 @@ def initiate_payment(
         "amount": amount,
         "currency": "NGN",
         "plan_name": plan.name,
-        "fundsavaera_public_key": fundsavaera_service.pub_key,
-        "message": "Payment initialized. Complete payment with Fundsavaera."
+        "flutterwave_public_key": flutterwave_service.public_key,
+        "message": "Payment initialized. Complete payment with Flutterwave."
     }
 
 # Verify payment and activate subscription
@@ -290,10 +290,10 @@ def verify_payment(
     if payment.status == "completed":
         raise HTTPException(status_code=400, detail="Payment already verified")
     
-    # Verify with Fundsavaera
-    from app.fundsavaera_service import fundsavaera_service
+    # Verify with Flutterwave
+    from app.flutterwave_service import flutterwave_service
     
-    verification_result = fundsavaera_service.verify_payment(request.transaction_reference)
+    verification_result = flutterwave_service.verify_payment(request.transaction_reference)
     
     if not verification_result.get("success"):
         raise HTTPException(status_code=400, detail=verification_result.get("message", "Payment verification failed"))
@@ -358,10 +358,10 @@ def get_payment_history(
     
     return payments
 
-# Fundsavaera webhook endpoint
-@router.post("/webhook/fundsavaera")
-async def fundsavaera_webhook(request: dict, db: Session = Depends(get_db)):
-    """Handle Fundsavaera payment webhooks"""
+# Flutterwave webhook endpoint
+@router.post("/webhook/flutterwave")
+async def flutterwave_webhook(request: dict, db: Session = Depends(get_db)):
+    """Handle Flutterwave payment webhooks"""
     
     # Verify webhook signature
     # In production, verify the webhook hash
