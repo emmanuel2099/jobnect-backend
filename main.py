@@ -84,11 +84,33 @@ async def lifespan(app: FastAPI):
                 """))
                 if not result.fetchone():
                     print("🔄 Adding jobs_applied column to subscriptions table...")
-                    db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER DEFAULT 0;"))
-                    db.commit()
-                    print("✅ jobs_applied column added successfully")
+                    try:
+                        db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER DEFAULT 0;"))
+                        db.commit()
+                        print("✅ jobs_applied column added successfully")
+                    except Exception as e:
+                        print(f"❌ Error adding jobs_applied column: {e}")
+                        # Try alternative approach
+                        try:
+                            db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER;"))
+                            db.execute(text("UPDATE subscriptions SET jobs_applied = 0 WHERE jobs_applied IS NULL;"))
+                            db.commit()
+                            print("✅ jobs_applied column added successfully (alternative method)")
+                        except Exception as e2:
+                            print(f"❌ Alternative method also failed: {e2}")
                 else:
                     print("✅ jobs_applied column already exists")
+                
+                # Verify column exists
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='subscriptions' AND column_name='jobs_applied';
+                """))
+                if result.fetchone():
+                    print("✅ jobs_applied column verified to exist")
+                else:
+                    print("❌ jobs_applied column still missing - critical error!")
             except Exception as e:
                 print(f"⚠️  Warning: Could not add columns: {e}")
                 db.rollback()

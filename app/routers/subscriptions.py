@@ -200,7 +200,7 @@ def check_access(
     return result
 
 # Emergency database fix endpoint
-@router.post("/fix-database")
+@router.get("/fix-database")
 def fix_database(db: Session = Depends(get_db)):
     """Emergency fix to add missing jobs_applied column"""
     try:
