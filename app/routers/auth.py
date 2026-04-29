@@ -392,53 +392,38 @@ async def logout(current_user: User = Depends(get_current_user), db: Session = D
 
 @router.get("/validate-session")
 async def validate_session(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Validate if user session is still valid (not deleted by admin)"""
-    from sqlalchemy import text
-    
+    """Validate if user session is still valid"""
     try:
-        # Check if user has been invalidated (deleted by admin)
-        result = db.execute(text("""
-            SELECT COUNT(*) FROM invalidated_sessions 
-            WHERE user_id = :user_id
-        """), {"user_id": current_user.id})
+        # Check if user still exists in database (not deleted)
+        user = db.query(User).filter(User.id == current_user.id).first()
         
-        invalidated_count = result.fetchone()[0]
-        
-        if invalidated_count > 0:
-            # User has been deleted by admin - session is invalid
+        if not user:
+            # User has been deleted - session is invalid
             return {
                 "success": False,
-                "message": "Session invalidated - user deleted by admin",
-                "data": {"force_logout": True, "reason": "user_deleted"}
+                "message": "Session invalid - user not found",
+                "data": {"valid": False}
             }
         
-        # Session is still valid
+        # Session is valid
         return {
             "success": True,
             "message": "Session is valid",
             "data": {
+                "valid": True,
                 "user": {
-                    "id": current_user.id,
-                    "name": current_user.name,
-                    "email": current_user.email,
-                    "userType": current_user.user_type,
-                    "isActive": current_user.is_active
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                    "user_type": user.user_type
                 }
             }
         }
         
     except Exception as e:
-        # If table doesn't exist or other error, assume session is valid
+        print(f"❌ Error validating session: {e}")
         return {
-            "success": True,
-            "message": "Session is valid",
-            "data": {
-                "user": {
-                    "id": current_user.id,
-                    "name": current_user.name,
-                    "email": current_user.email,
-                    "userType": current_user.user_type,
-                    "isActive": current_user.is_active
-                }
-            }
+            "success": False,
+            "message": "Session validation failed",
+            "data": {"valid": False}
         }
