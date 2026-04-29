@@ -25,7 +25,7 @@ class JobSeeker(Base):
     resume = relationship("Resume", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
     applications = relationship("JobApplication", back_populates="job_seeker", cascade="all, delete-orphan")
     bookmarks = relationship("Bookmark", back_populates="job_seeker", cascade="all, delete-orphan")
-    notifications = relationship("Notification", back_populates="job_seeker", cascade="all, delete-orphan")
+    # notifications = relationship("Notification", back_populates="job_seeker", cascade="all, delete-orphan")  # Temporarily disabled
     social_links = relationship("SocialLink", back_populates="job_seeker", cascade="all, delete-orphan")
     kyc = relationship("KYC", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="job_seeker")
@@ -409,7 +409,7 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="notifications")
-    job_seeker = relationship("JobSeeker", back_populates="notifications")
+    # job_seeker = relationship("JobSeeker", back_populates="notifications")  # Temporarily disabled
     company_user = relationship("CompanyUser", back_populates="notifications")
 
 # Social Link Model
