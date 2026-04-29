@@ -76,24 +76,36 @@ class FlutterwaveService:
         }
         
         try:
+            print(f"🔵 Making Flutterwave API call to: {url}")
+            print(f"🔵 Payload: {payload}")
+            print(f"🔵 Headers: {headers}")
+            
             response = requests.post(url, json=payload, headers=headers)
+            print(f"🔵 Response status: {response.status_code}")
+            print(f"🔵 Response body: {response.text}")
+            
             response.raise_for_status()
             data = response.json()
             
             if data.get("status") == "success":
+                payment_link = data["data"]["link"]
+                print(f"🔵 Flutterwave payment link: {payment_link}")
                 return {
                     "success": True,
-                    "payment_link": data["data"]["link"],
+                    "payment_link": payment_link,
                     "tx_ref": tx_ref,
                     "message": "Payment initialized successfully"
                 }
             else:
+                error_msg = data.get("message", "Failed to initialize payment")
+                print(f"🔴 Flutterwave API error: {error_msg}")
                 return {
                     "success": False,
-                    "message": data.get("message", "Failed to initialize payment")
+                    "message": error_msg
                 }
         
         except requests.exceptions.RequestException as e:
+            print(f"🔴 Flutterwave API exception: {e}")
             return {
                 "success": False,
                 "message": f"Payment initialization failed: {str(e)}"

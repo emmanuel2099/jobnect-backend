@@ -437,7 +437,7 @@ def verify_payment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Verify payment with Fundsavaera and activate subscription"""
+    """Verify payment with Flutterwave and activate subscription"""
     
     # Find payment record
     payment = db.query(Payment).filter(
