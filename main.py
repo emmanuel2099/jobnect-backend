@@ -8,7 +8,7 @@ import uvicorn
 import os
 
 from app.database import engine, Base, init_db
-from app.routers import auth, profile, jobs, applications, companies, master_data, admin, notifications, chat, upload, subscriptions, email_verification, feedback, reviews, reviews, auth_separate
+from app.routers import auth, profile, jobs, applications, companies, master_data, admin, notifications, chat, upload, subscriptions, email_verification, feedback, reviews, auth_separate
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
