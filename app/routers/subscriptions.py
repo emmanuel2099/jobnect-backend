@@ -206,33 +206,37 @@ def initiate_payment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Initiate a subscription payment with Flutterwave"""
+    """Initiate a subscription payment with Fundsavaera"""
     
     # Get plan
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == request.plan_id).first()
+    
     if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+        raise HTTPException(status_code=404, detail="Subscription plan not found")
     
-    # Apply pricing based on user type
-    # Job Seekers: Low ₦3,000, High ₦10,000
-    # Companies: Low ₦10,000, High ₦20,000
-    if current_user.user_type == "company":
-        amount = 20000.0 if plan.tier == "high" else 10000.0
-    else:  # applicant
-        amount = 10000.0 if plan.tier == "high" else 3000.0
+    # Create payment record
+    payment = Payment(
+        user_id=current_user.id,
+        plan_id=request.plan_id,
+        amount=plan.price,
+        currency="NGN",
+        status="pending",
+        transaction_ref=f"SUB-{uuid.uuid4().hex[:12].upper()}",
+        payment_method="fundsavaera"
+    )
     
-    # Generate transaction reference
-    transaction_ref = f"SUB-{uuid.uuid4().hex[:12].upper()}"
+    db.add(payment)
+    db.commit()
     
-    # Initialize Flutterwave payment
-    from app.flutterwave_service import flutterwave_service
+    # Initialize Fundsavaera payment
+    from app.fundsavaera_service import fundsavaera_service
     
-    payment_result = flutterwave_service.initialize_payment(
-        amount=amount,
+    payment_result = fundsavaera_service.initialize_payment(
+        amount=plan.price,
         email=current_user.email,
         phone=current_user.phone,
         name=current_user.name,
-        tx_ref=transaction_ref,
+        tx_ref=payment.transaction_ref,
         redirect_url="",  # Will be handled by mobile app
         currency="NGN"
     )
@@ -261,8 +265,8 @@ def initiate_payment(
         "amount": amount,
         "currency": "NGN",
         "plan_name": plan.name,
-        "flutterwave_public_key": flutterwave_service.public_key,
-        "message": "Payment initialized. Complete payment with Flutterwave."
+        "fundsavaera_public_key": fundsavaera_service.pub_key,
+        "message": "Payment initialized. Complete payment with Fundsavaera."
     }
 
 # Verify payment and activate subscription
@@ -272,7 +276,7 @@ def verify_payment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Verify payment with Flutterwave and activate subscription"""
+    """Verify payment with Fundsavaera and activate subscription"""
     
     # Find payment record
     payment = db.query(Payment).filter(
@@ -286,10 +290,10 @@ def verify_payment(
     if payment.status == "completed":
         raise HTTPException(status_code=400, detail="Payment already verified")
     
-    # Verify with Flutterwave
-    from app.flutterwave_service import flutterwave_service
+    # Verify with Fundsavaera
+    from app.fundsavaera_service import fundsavaera_service
     
-    verification_result = flutterwave_service.verify_payment_by_reference(request.transaction_reference)
+    verification_result = fundsavaera_service.verify_payment(request.transaction_reference)
     
     if not verification_result.get("success"):
         raise HTTPException(status_code=400, detail=verification_result.get("message", "Payment verification failed"))
@@ -354,10 +358,10 @@ def get_payment_history(
     
     return payments
 
-# Flutterwave webhook endpoint
-@router.post("/webhook/flutterwave")
-async def flutterwave_webhook(request: dict, db: Session = Depends(get_db)):
-    """Handle Flutterwave payment webhooks"""
+# Fundsavaera webhook endpoint
+@router.post("/webhook/fundsavaera")
+async def fundsavaera_webhook(request: dict, db: Session = Depends(get_db)):
+    """Handle Fundsavaera payment webhooks"""
     
     # Verify webhook signature
     # In production, verify the webhook hash
@@ -365,7 +369,7 @@ async def flutterwave_webhook(request: dict, db: Session = Depends(get_db)):
     event = request.get("event")
     data = request.get("data", {})
     
-    if event == "charge.completed":
+    if event == "payment.completed":
         tx_ref = data.get("tx_ref")
         status = data.get("status")
         amount = data.get("amount")
