@@ -21,15 +21,15 @@ class JobSeeker(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    resume = relationship("Resume", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
-    applications = relationship("JobApplication", back_populates="job_seeker", cascade="all, delete-orphan")
-    bookmarks = relationship("Bookmark", back_populates="job_seeker", cascade="all, delete-orphan")
-    # notifications = relationship("Notification", back_populates="job_seeker", cascade="all, delete-orphan")  # Temporarily disabled
-    social_links = relationship("SocialLink", back_populates="job_seeker", cascade="all, delete-orphan")
-    kyc = relationship("KYC", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="job_seeker")
-    subscriptions = relationship("Subscription", back_populates="job_seeker", cascade="all, delete-orphan")
+    # Relationships - Temporarily disabled for basic authentication
+    # resume = relationship("Resume", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
+    # applications = relationship("JobApplication", back_populates="job_seeker", cascade="all, delete-orphan")
+    # bookmarks = relationship("Bookmark", back_populates="job_seeker", cascade="all, delete-orphan")
+    # notifications = relationship("Notification", back_populates="job_seeker", cascade="all, delete-orphan")
+    # social_links = relationship("SocialLink", back_populates="job_seeker", cascade="all, delete-orphan")
+    # kyc = relationship("KYC", back_populates="job_seeker", uselist=False, cascade="all, delete-orphan")
+    # reviews = relationship("Review", back_populates="job_seeker")
+    # subscriptions = relationship("Subscription", back_populates="job_seeker", cascade="all, delete-orphan")
 
 # Company User Model  
 class CompanyUser(Base):
@@ -51,11 +51,11 @@ class CompanyUser(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    company = relationship("Company", back_populates="company_user", uselist=False, cascade="all, delete-orphan")
-    notifications = relationship("Notification", back_populates="company_user", cascade="all, delete-orphan")
-    social_links = relationship("SocialLink", back_populates="company_user", cascade="all, delete-orphan")
-    subscriptions = relationship("Subscription", back_populates="company_user", cascade="all, delete-orphan")
+    # Relationships - Temporarily disabled for basic authentication
+    # company = relationship("Company", back_populates="company_user", uselist=False, cascade="all, delete-orphan")
+    # notifications = relationship("Notification", back_populates="company_user", cascade="all, delete-orphan")
+    # social_links = relationship("SocialLink", back_populates="company_user", cascade="all, delete-orphan")
+    # subscriptions = relationship("Subscription", back_populates="company_user", cascade="all, delete-orphan")
 
 # Legacy User Model (kept for backward compatibility)
 class User(Base):
