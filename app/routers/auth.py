@@ -53,7 +53,23 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         print(f"✅ Password hashed (length: {len(hashed_pwd)})")
         
         # Determine user type based on company field
-        user_type = "company" if user_data.company and user_data.company != "N/A" else "applicant"
+        print(f"🔍 Debug: company field value: '{user_data.company}'")
+        print(f"🔍 Debug: company field type: {type(user_data.company)}")
+        print(f"🔍 Debug: company is None: {user_data.company is None}")
+        print(f"🔍 Debug: company == 'N/A': {user_data.company == 'N/A'}")
+        print(f"🔍 Debug: company.strip() == 'N/A': '{user_data.company.strip() if user_data.company else 'None'}' == 'N/A'")
+        
+        # More explicit logic for user type determination
+        if user_data.company is None:
+            user_type = "applicant"
+        elif user_data.company.strip() == "N/A":
+            user_type = "applicant"
+        elif user_data.company.strip() == "":
+            user_type = "applicant"
+        else:
+            user_type = "company"
+            
+        print(f"🔍 Debug: determined user_type: {user_type}")
         
         # Get company logo from request body if provided
         company_logo = None
@@ -172,6 +188,8 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
         )
         
         print("✅ Login successful")
+        print(f"🔍 Debug: Login user_type: '{user.user_type}'")
+        print(f"🔍 Debug: Login company: '{user.company}'")
         return {
             "success": True,
             "message": "Login successful",
