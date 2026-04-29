@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/jobnect_db"
+    DATABASE_URL: str = None  # Will be set by Railway environment variable
     SECRET_KEY: str = "your-secret-key-change-this"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days
@@ -15,4 +16,18 @@ class Settings(BaseSettings):
         env_file = ".env"
         extra = "allow"  # Allow extra fields from environment
 
-settings = Settings()
+def get_settings():
+    """Get settings with DATABASE_URL validation"""
+    settings = Settings()
+    
+    # Force DATABASE_URL from environment if not set
+    if not settings.DATABASE_URL or settings.DATABASE_URL is None:
+        env_db_url = os.getenv("DATABASE_URL")
+        if env_db_url:
+            settings.DATABASE_URL = env_db_url
+        else:
+            raise ValueError("DATABASE_URL environment variable is required but not set")
+    
+    return settings
+
+settings = get_settings()
