@@ -43,6 +43,15 @@ class FlutterwaveService:
         
         url = f"{self.base_url}/payments"
         
+        print(f"🔵 Flutterwave payment initialization:")
+        print(f"  - URL: {url}")
+        print(f"  - Amount: {amount}")
+        print(f"  - Email: {email}")
+        print(f"  - Phone: {phone}")
+        print(f"  - Name: {name}")
+        print(f"  - TX Ref: {tx_ref}")
+        print(f"  - Secret Key: {self.secret_key[:20]}...")
+        
         payload = {
             "tx_ref": tx_ref,
             "amount": str(amount),

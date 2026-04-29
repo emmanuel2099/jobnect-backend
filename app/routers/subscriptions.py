@@ -206,7 +206,22 @@ def initiate_payment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Initiate a subscription payment with Fundsavaera"""
+    """Initiate a subscription payment with Flutterwave"""
+    
+    print(f"🔵 Payment initiation request:")
+    print(f"  - Plan ID: {request.plan_id}")
+    print(f"  - User ID: {current_user.id}")
+    print(f"  - User Email: {current_user.email}")
+    print(f"  - User Phone: {current_user.phone}")
+    print(f"  - User Name: {current_user.name}")
+    
+    # Validate user data
+    if not current_user.email:
+        raise HTTPException(status_code=400, detail="User email is required for payment")
+    if not current_user.phone:
+        raise HTTPException(status_code=400, detail="User phone is required for payment")
+    if not current_user.name:
+        raise HTTPException(status_code=400, detail="User name is required for payment")
     
     # Get plan
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == request.plan_id).first()
