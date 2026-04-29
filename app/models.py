@@ -400,6 +400,7 @@ class Notification(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id", ondelete="CASCADE"))
     company_user_id = Column(Integer, ForeignKey("company_users.id", ondelete="CASCADE"))
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
@@ -408,6 +409,7 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="notifications")
+    job_seeker = relationship("JobSeeker", back_populates="notifications")
     company_user = relationship("CompanyUser", back_populates="notifications")
 
 # Social Link Model
