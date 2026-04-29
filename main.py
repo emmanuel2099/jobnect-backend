@@ -21,9 +21,9 @@ async def lifespan(app: FastAPI):
         print("\n📋 Environment Check:")
         print(f"   DATABASE_URL: {'✅ Set' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
         print(f"   SECRET_KEY: {'✅ Set' if os.getenv('SECRET_KEY') else '❌ NOT SET'}")
-        print(f"   FLUTTERWAVE_PUBLIC_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_PUBLIC_KEY') else '❌ NOT SET'}")
-        print(f"   FLUTTERWAVE_SECRET_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_SECRET_KEY') else '❌ NOT SET'}")
-        print(f"   FLUTTERWAVE_ENCRYPTION_KEY: {'✅ Set' if os.getenv('FLUTTERWAVE_ENCRYPTION_KEY') else '❌ NOT SET'}")
+        print(f"   FUNDSVERA_BASE_URL: {'✅ Set' if os.getenv('FUNDSVERA_BASE_URL') else '❌ NOT SET'}")
+        print(f"   FUNDSVERA_PUBLIC_KEY: {'✅ Set' if os.getenv('FUNDSVERA_PUBLIC_KEY') else '❌ NOT SET'}")
+        print(f"   FUNDSVERA_SECRET_KEY: {'✅ Set' if os.getenv('FUNDSVERA_SECRET_KEY') else '❌ NOT SET'}")
         
         # Check if DATABASE_URL is set
         database_url = os.getenv("DATABASE_URL")

@@ -297,14 +297,14 @@ def test_user_data(
         }
     }
 
-# Initiate payment - EMERGENCY BYPASS
+# Initiate payment
 @router.post("/initiate-payment")
 def initiate_payment(
     request: InitiatePaymentRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Initiate a subscription payment with Flutterwave - EMERGENCY FIX"""
+    """Initiate a subscription payment with FundsVera."""
     
     print(f"🔵 EMERGENCY Payment initiation:")
     print(f"  - Plan ID: {request.plan_id}")
@@ -330,11 +330,25 @@ def initiate_payment(
     import uuid
     tx_ref = f"SUB-{uuid.uuid4().hex[:12].upper()}"
     
-    # Initialize Flutterwave payment directly
-    from app.flutterwave_service import flutterwave_service
+    # Create pending payment record first (verification relies on this record).
+    payment = Payment(
+        user_id=current_user.id,
+        subscription_id=None,
+        amount=amount,
+        currency="NGN",
+        payment_method=request.payment_method,
+        transaction_reference=tx_ref,
+        status="pending"
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    # Initialize FundsVera payment directly
+    from app.fundsvera_service import fundsvera_service
     
     try:
-        payment_result = flutterwave_service.initialize_payment(
+        payment_result = fundsvera_service.initialize_payment(
             amount=amount,
             email=current_user.email or "test@example.com",
             phone=current_user.phone or "1234567890",
@@ -352,89 +366,17 @@ def initiate_payment(
                 "amount": amount,
                 "currency": "NGN",
                 "plan_name": plan_data["name"],
-                "flutterwave_public_key": flutterwave_service.public_key,
-                "message": "Payment initialized. Complete payment with Flutterwave."
+                "payment_provider": "fundsvera",
+                "fundsvera_public_key": fundsvera_service.public_key,
+                "message": "Payment initialized. Complete payment with FundsVera."
             }
         else:
-            # Fallback: Return test payment link
-            return {
-                "success": True,
-                "transaction_reference": tx_ref,
-                "payment_link": "https://flutterwave.com/pay/test",
-                "amount": amount,
-                "currency": "NGN",
-                "plan_name": plan_data["name"],
-                "flutterwave_public_key": flutterwave_service.public_key,
-                "message": "Payment initialized. Complete payment with Flutterwave."
-            }
+            raise HTTPException(status_code=400, detail=payment_result.get("message", "FundsVera initialization failed"))
     except Exception as e:
-        print(f"❌ Flutterwave error: {e}")
-        # Fallback: Return test payment link
-        return {
-            "success": True,
-            "transaction_reference": tx_ref,
-            "payment_link": "https://flutterwave.com/pay/test",
-            "amount": amount,
-            "currency": "NGN",
-            "plan_name": plan_data["name"],
-            "flutterwave_public_key": flutterwave_service.public_key,
-            "message": "Payment initialized. Complete payment with Flutterwave."
-        }
-    
-    # Create payment record
-    payment = Payment(
-        user_id=current_user.id,
-        plan_id=request.plan_id,
-        amount=plan.price,
-        currency="NGN",
-        status="pending",
-        transaction_ref=f"SUB-{uuid.uuid4().hex[:12].upper()}",
-        payment_method="flutterwave"
-    )
-    
-    db.add(payment)
-    db.commit()
-    
-    # Initialize Flutterwave payment
-    from app.flutterwave_service import flutterwave_service
-    
-    payment_result = flutterwave_service.initialize_payment(
-        amount=plan.price,
-        email=current_user.email,
-        phone=current_user.phone,
-        name=current_user.name,
-        tx_ref=payment.transaction_ref,
-        redirect_url="",  # Will be handled by mobile app
-        currency="NGN"
-    )
-    
-    if not payment_result.get("success"):
-        raise HTTPException(status_code=400, detail=payment_result.get("message", "Payment initialization failed"))
-    
-    # Create pending payment record
-    payment = Payment(
-        user_id=current_user.id,
-        subscription_id=None,  # Will be set after verification
-        amount=amount,
-        currency="NGN",
-        payment_method=request.payment_method,
-        transaction_reference=transaction_ref,
-        status="pending"
-    )
-    db.add(payment)
-    db.commit()
-    db.refresh(payment)
-    
-    return {
-        "success": True,
-        "transaction_reference": transaction_ref,
-        "payment_link": payment_result.get("payment_link"),
-        "amount": amount,
-        "currency": "NGN",
-        "plan_name": plan.name,
-        "flutterwave_public_key": flutterwave_service.public_key,
-        "message": "Payment initialized. Complete payment with Flutterwave."
-    }
+        print(f"❌ FundsVera error: {e}")
+        payment.status = "failed"
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Payment initialization failed: {e}")
 
 # Verify payment and activate subscription
 @router.post("/verify-payment")
@@ -443,7 +385,7 @@ def verify_payment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Verify payment with Flutterwave and activate subscription"""
+    """Verify payment with FundsVera and activate subscription."""
     
     # Find payment record
     payment = db.query(Payment).filter(
@@ -457,10 +399,10 @@ def verify_payment(
     if payment.status == "completed":
         raise HTTPException(status_code=400, detail="Payment already verified")
     
-    # Verify with Flutterwave
-    from app.flutterwave_service import flutterwave_service
-    
-    verification_result = flutterwave_service.verify_payment(request.transaction_reference)
+    # Verify with FundsVera
+    from app.fundsvera_service import fundsvera_service
+
+    verification_result = fundsvera_service.verify_payment_by_reference(request.transaction_reference)
     
     if not verification_result.get("success"):
         raise HTTPException(status_code=400, detail=verification_result.get("message", "Payment verification failed"))
@@ -525,13 +467,10 @@ def get_payment_history(
     
     return payments
 
-# Flutterwave webhook endpoint
-@router.post("/webhook/flutterwave")
-async def flutterwave_webhook(request: dict, db: Session = Depends(get_db)):
-    """Handle Flutterwave payment webhooks"""
-    
-    # Verify webhook signature
-    # In production, verify the webhook hash
+# FundsVera webhook endpoint
+@router.post("/webhook/fundsvera")
+async def fundsvera_webhook(request: dict, db: Session = Depends(get_db)):
+    """Handle FundsVera payment webhooks."""
     
     event = request.get("event")
     data = request.get("data", {})
