@@ -199,6 +199,44 @@ def check_access(
     
     return result
 
+# Emergency database fix endpoint
+@router.post("/fix-database")
+def fix_database(db: Session = Depends(get_db)):
+    """Emergency fix to add missing jobs_applied column"""
+    try:
+        from sqlalchemy import text
+        
+        # Check if column exists
+        result = db.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='subscriptions' AND column_name='jobs_applied';
+        """))
+        
+        if not result.fetchone():
+            # Add the missing column
+            print("🔧 Adding jobs_applied column to subscriptions table...")
+            db.execute(text("ALTER TABLE subscriptions ADD COLUMN jobs_applied INTEGER DEFAULT 0;"))
+            db.commit()
+            print("✅ jobs_applied column added successfully!")
+            
+            return {
+                "success": True,
+                "message": "Database fixed successfully - jobs_applied column added"
+            }
+        else:
+            return {
+                "success": True,
+                "message": "Database already has jobs_applied column"
+            }
+            
+    except Exception as e:
+        print(f"❌ Error fixing database: {e}")
+        return {
+            "success": False,
+            "message": f"Error fixing database: {e}"
+        }
+
 # Test user data endpoint
 @router.get("/test-user-data")
 def test_user_data(
