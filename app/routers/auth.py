@@ -1,14 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
+from typing import Optional
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Company, Resume
 from app.schemas import UserRegister, UserLogin, StandardResponse
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
 from app.config import settings
 
 router = APIRouter()
+
+
+def _normalize_user_type(raw_value: Optional[str]) -> str:
+    value = (raw_value or "").strip().lower()
+    if value in {"company", "employer", "recruiter"}:
+        return "company"
+    if value in {"applicant", "jobseeker", "job_seeker", "job-seeker", "candidate", "user"}:
+        return "applicant"
+    return ""
 
 @router.post("/registration")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
@@ -52,19 +62,11 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         hashed_pwd = hash_password(user_data.password)
         print(f"✅ Password hashed (length: {len(hashed_pwd)})")
         
-        # Determine user type based on company field
-        print(f"🔍 Debug: company field value: '{user_data.company}'")
-        print(f"🔍 Debug: company field type: {type(user_data.company)}")
-        print(f"🔍 Debug: company is None: {user_data.company is None}")
-        print(f"🔍 Debug: company == 'N/A': {user_data.company == 'N/A'}")
-        print(f"🔍 Debug: company.strip() == 'N/A': '{user_data.company.strip() if user_data.company else 'None'}' == 'N/A'")
-        
-        # More explicit logic for user type determination
-        if user_data.company is None:
-            user_type = "applicant"
-        elif user_data.company.strip() == "N/A":
-            user_type = "applicant"
-        elif user_data.company.strip() == "":
+        # Determine user type using explicit type first, then fallback to legacy company field.
+        requested_user_type = _normalize_user_type(user_data.user_type) or _normalize_user_type(user_data.account_type)
+        if requested_user_type:
+            user_type = requested_user_type
+        elif not user_data.company or user_data.company.strip() in {"", "N/A"}:
             user_type = "applicant"
         else:
             user_type = "company"
@@ -96,6 +98,27 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
         print(f"✅ User created with ID: {new_user.id}")
+
+        # Keep profile data separated by flow:
+        # - applicants get a Resume row
+        # - companies get a Company row
+        if user_type == "company":
+            existing_company = db.query(Company).filter(Company.user_id == new_user.id).first()
+            if not existing_company:
+                db.add(Company(
+                    user_id=new_user.id,
+                    name=(user_data.company or user_data.name).strip(),
+                    logo=company_logo,
+                    email=new_user.email,
+                    phone=new_user.phone,
+                    is_active=True
+                ))
+                db.commit()
+        else:
+            existing_resume = db.query(Resume).filter(Resume.user_id == new_user.id).first()
+            if not existing_resume:
+                db.add(Resume(user_id=new_user.id))
+                db.commit()
         
         # Generate access token for immediate login (OTP will be post-registration KYC)
         print("🔑 Generating access token for immediate login...")

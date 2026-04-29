@@ -11,6 +11,8 @@ class UserRegister(BaseModel):
     password_confirmation: str
     company: Optional[str] = "N/A"
     company_logo: Optional[str] = None
+    user_type: Optional[str] = None
+    account_type: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
