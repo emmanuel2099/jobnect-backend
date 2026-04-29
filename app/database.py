@@ -2,15 +2,32 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
+import os
 
-# Create database engine with SQLite support
-if settings.DATABASE_URL.startswith("sqlite"):
+# Database setup with better error handling
+database_url = settings.DATABASE_URL
+
+# Debug logging
+print(f"🔍 DATABASE_URL from settings: {database_url}")
+print(f"🔍 DATABASE_URL from env: {os.getenv('DATABASE_URL')}")
+
+# Ensure we have a valid database URL
+if not database_url or database_url == "postgresql://localhost:5432/jobnect_db":
+    print("⚠️  DATABASE_URL is not properly set, using fallback")
+    # For Railway, check if DATABASE_URL is available in environment
+    railway_db_url = os.getenv("DATABASE_URL")
+    if railway_db_url:
+        database_url = railway_db_url
+        print(f"✅ Using Railway DATABASE_URL: {database_url}")
+    else:
+        raise ValueError("DATABASE_URL is not set. Please configure the database connection.")
+
+if database_url.startswith("sqlite"):
     engine = create_engine(
-        settings.DATABASE_URL,
-        connect_args={"check_same_thread": False}
+        database_url, connect_args={"check_same_thread": False}
     )
 else:
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_engine(database_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
