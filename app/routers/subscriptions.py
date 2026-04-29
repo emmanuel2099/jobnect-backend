@@ -310,15 +310,21 @@ def initiate_payment(
     print(f"  - Plan ID: {request.plan_id}")
     print(f"  - User ID: {current_user.id}")
     
-    # EMERGENCY: Skip database checks and use hardcoded plan data
-    plans = {
-        1: {"name": "Basic", "price": 5000},
-        2: {"name": "Premium", "price": 10000},
-        3: {"name": "Pro", "price": 20000}
-    }
+    # Get plan from database
+    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == request.plan_id).first()
     
-    plan_data = plans.get(request.plan_id, {"name": "Basic", "price": 5000})
-    amount = plan_data["price"]
+    if not plan:
+        raise HTTPException(status_code=404, detail="Subscription plan not found")
+    
+    print(f"🔵 Plan from database: {plan.name} - ₦{plan.price:,}")
+    
+    # Use actual plan data from database
+    plan_data = {"name": plan.name, "price": plan.price}
+    amount = plan.price
+    
+    print(f"🔵 Plan selected: {request.plan_id}")
+    print(f"🔵 Plan data: {plan_data}")
+    print(f"🔵 Amount to charge: ₦{amount:,}")
     
     # Generate transaction reference
     import uuid
