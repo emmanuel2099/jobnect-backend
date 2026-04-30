@@ -316,57 +316,67 @@ def initiate_payment(
 ):
     """Initiate a subscription payment with FundsVera."""
     
-    print(f"🔵 EMERGENCY Payment initiation:")
-    print(f"  - Plan ID: {request.plan_id}")
-    print(f"  - User ID: {current_user.id}")
-    
-    # Get plan from database
-    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == request.plan_id).first()
-    
-    if not plan:
-        raise HTTPException(status_code=404, detail="Subscription plan not found")
-    
-    print(f"🔵 Plan from database: {plan.name} - ₦{plan.price:,}")
-    
-    # Use actual plan data from database
-    plan_data = {"name": plan.name, "price": plan.price}
-    amount = plan.price
-    
-    print(f"🔵 Plan selected: {request.plan_id}")
-    print(f"🔵 Plan data: {plan_data}")
-    print(f"🔵 Amount to charge: ₦{amount:,}")
-    
-    # Generate transaction reference
-    import uuid
-    tx_ref = f"SUB-{uuid.uuid4().hex[:12].upper()}"
-    
-    # Create pending payment record first (verification relies on this record).
-    payment = Payment(
-        user_id=current_user.id,
-        subscription_id=None,
-        amount=amount,
-        currency="NGN",
-        payment_method=request.payment_method,
-        transaction_reference=tx_ref,
-        status="pending"
-    )
-    db.add(payment)
-    db.commit()
-    db.refresh(payment)
-
-    # Initialize FundsVera payment directly
-    from app.fundsvera_service import fundsvera_service
-    
     try:
+        print(f"🔵 Payment initiation:")
+        print(f"  - Plan ID: {request.plan_id}")
+        print(f"  - User ID: {current_user.id}")
+        print(f"  - User type: {type(current_user).__name__}")
+        
+        # Get plan from database
+        plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == request.plan_id).first()
+        
+        if not plan:
+            raise HTTPException(status_code=404, detail="Subscription plan not found")
+        
+        print(f"🔵 Plan from database: {plan.name} - ₦{plan.price:,}")
+        
+        # Use actual plan data from database
+        plan_data = {"name": plan.name, "price": plan.price}
+        amount = plan.price
+        
+        print(f"🔵 Amount to charge: ₦{amount:,}")
+        
+        # Generate transaction reference
+        import uuid
+        tx_ref = f"SUB-{uuid.uuid4().hex[:12].upper()}"
+        
+        # Get user email and phone safely
+        user_email = getattr(current_user, 'email', None) or "test@example.com"
+        user_phone = getattr(current_user, 'phone', None) or "1234567890"
+        user_name = getattr(current_user, 'name', None) or "Test User"
+        
+        print(f"🔵 User details: {user_email}, {user_phone}, {user_name}")
+        
+        # Create pending payment record first (verification relies on this record).
+        payment = Payment(
+            user_id=current_user.id,
+            subscription_id=None,
+            amount=amount,
+            currency="NGN",
+            payment_method=request.payment_method,
+            transaction_reference=tx_ref,
+            status="pending"
+        )
+        db.add(payment)
+        db.commit()
+        db.refresh(payment)
+        
+        print(f"🔵 Payment record created: {payment.id}")
+
+        # Initialize FundsVera payment directly
+        from app.fundsvera_service import fundsvera_service
+        
         payment_result = fundsvera_service.initialize_payment(
             amount=amount,
-            email=current_user.email or "test@example.com",
-            phone=current_user.phone or "1234567890",
-            name=current_user.name or "Test User",
+            email=user_email,
+            phone=user_phone,
+            name=user_name,
             tx_ref=tx_ref,
             redirect_url="",
             currency="NGN"
         )
+        
+        print(f"🔵 FundsVera result: {payment_result.get('success')}")
         
         if payment_result.get("success"):
             return {
@@ -381,12 +391,26 @@ def initiate_payment(
                 "message": "Payment initialized. Complete payment with FundsVera."
             }
         else:
+            payment.status = "failed"
+            db.commit()
             raise HTTPException(status_code=400, detail=payment_result.get("message", "FundsVera initialization failed"))
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ FundsVera error: {e}")
-        payment.status = "failed"
-        db.commit()
-        raise HTTPException(status_code=400, detail=f"Payment initialization failed: {e}")
+        print(f"❌ Payment initiation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Try to mark payment as failed if it exists
+        try:
+            if 'payment' in locals():
+                payment.status = "failed"
+                db.commit()
+        except:
+            pass
+            
+        raise HTTPException(status_code=500, detail=f"Payment initialization failed: {str(e)}")
 
 # Verify payment and activate subscription
 @router.post("/verify-payment")

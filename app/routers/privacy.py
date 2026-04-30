@@ -3,6 +3,151 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["privacy"])
 
+@router.get("/data-deletion", response_class=HTMLResponse)
+def get_data_deletion():
+    """Serve the data deletion request page"""
+    html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Deletion Request - Eagle's Pride</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        .info-box {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .contact {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .email-link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .email-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Account & Data Deletion Request</h1>
+    
+    <div class="info-box">
+        <p><strong>Eagle's Pride</strong> respects your right to privacy and data control. You can request deletion of your account and all associated personal data at any time.</p>
+    </div>
+
+    <h2>How to Request Data Deletion</h2>
+    
+    <p>To request deletion of your account and data, please send an email to:</p>
+    
+    <div class="contact">
+        <p><strong>Email:</strong> <a href="mailto:support@eaglespride.com" class="email-link">support@eaglespride.com</a></p>
+        <p><strong>Subject:</strong> Data Deletion Request</p>
+    </div>
+
+    <h2>Information to Include in Your Request</h2>
+    
+    <p>Please include the following information in your email:</p>
+    <ul>
+        <li>Your full name</li>
+        <li>Email address associated with your account</li>
+        <li>Phone number (if applicable)</li>
+        <li>Account type (Job Seeker or Company)</li>
+        <li>Reason for deletion (optional)</li>
+    </ul>
+
+    <h2>What Data Will Be Deleted</h2>
+    
+    <p>Upon receiving your request, we will permanently delete:</p>
+    <ul>
+        <li>Your account credentials (email, password)</li>
+        <li>Personal information (name, phone number, location)</li>
+        <li>Profile data (resume, work experience, education, skills)</li>
+        <li>Job applications and saved jobs</li>
+        <li>Messages and chat history</li>
+        <li>Photos and uploaded documents</li>
+        <li>Payment and subscription history</li>
+        <li>All other personal data associated with your account</li>
+    </ul>
+
+    <div class="warning">
+        <strong>⚠️ Important:</strong> Data deletion is permanent and cannot be undone. Once your data is deleted, you will not be able to recover your account or any associated information.
+    </div>
+
+    <h2>Processing Time</h2>
+    
+    <p>We will process your data deletion request within <strong>30 days</strong> of receiving your email. You will receive a confirmation email once the deletion is complete.</p>
+
+    <h2>In-App Deletion</h2>
+    
+    <p>You can also delete your account directly from the app:</p>
+    <ol>
+        <li>Open the Eagle's Pride app</li>
+        <li>Go to <strong>Settings</strong></li>
+        <li>Scroll down and tap <strong>Delete Account</strong></li>
+        <li>Confirm your decision</li>
+    </ol>
+
+    <h2>Data Retention</h2>
+    
+    <p>Some data may be retained for legal or business purposes:</p>
+    <ul>
+        <li>Transaction records (for accounting and tax purposes)</li>
+        <li>Data required by law to be retained</li>
+        <li>Anonymized analytics data (with no personal identifiers)</li>
+    </ul>
+
+    <h2>Questions or Concerns</h2>
+    
+    <p>If you have any questions about data deletion or our privacy practices, please contact us:</p>
+    
+    <div class="contact">
+        <p><strong>Email:</strong> <a href="mailto:support@eaglespride.com" class="email-link">support@eaglespride.com</a></p>
+        <p><strong>App:</strong> Eagle's Pride</p>
+        <p><strong>Developer:</strong> BugBuild</p>
+    </div>
+
+    <p style="margin-top: 40px; color: #7f8c8d; font-size: 0.9em;">
+        Last updated: April 30, 2026
+    </p>
+</body>
+</html>
+    """
+    return html_content
+
 @router.get("/privacy-policy", response_class=HTMLResponse)
 def get_privacy_policy():
     """Serve the privacy policy page"""
