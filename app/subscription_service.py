@@ -26,9 +26,22 @@ class SubscriptionService:
         Check if company can post a job in this category
         Returns: {"allowed": bool, "reason": str, "requires_payment": bool, "plan_needed": str}
         """
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user or user.user_type != "company":
-            return {"allowed": False, "reason": "User is not a company", "requires_payment": False}
+        from app.models import JobSeeker, CompanyUser
+        
+        # Try to find user in new tables first
+        company_user = db.query(CompanyUser).filter(CompanyUser.id == user_id).first()
+        if company_user:
+            # User is a company - proceed with check
+            user = company_user
+        else:
+            # Check legacy users table
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"allowed": False, "reason": "User not found", "requires_payment": False}
+            
+            # Check if legacy user is a company
+            if hasattr(user, 'user_type') and user.user_type != "company":
+                return {"allowed": False, "reason": "User is not a company", "requires_payment": False}
         
         # Get job category tier
         category = db.query(JobCategory).filter(JobCategory.id == category_id).first()
@@ -111,9 +124,22 @@ class SubscriptionService:
         Check if job seeker can apply to this job
         Returns: {"allowed": bool, "reason": str, "requires_payment": bool, "plan_needed": str}
         """
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user or user.user_type != "applicant":
-            return {"allowed": False, "reason": "User is not a job seeker", "requires_payment": False}
+        from app.models import JobSeeker, CompanyUser
+        
+        # Try to find user in new tables first
+        job_seeker = db.query(JobSeeker).filter(JobSeeker.id == user_id).first()
+        if job_seeker:
+            # User is a job seeker - proceed with check
+            user = job_seeker
+        else:
+            # Check legacy users table
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"allowed": False, "reason": "User not found", "requires_payment": False}
+            
+            # Check if legacy user is an applicant
+            if hasattr(user, 'user_type') and user.user_type != "applicant":
+                return {"allowed": False, "reason": "User is not a job seeker", "requires_payment": False}
         
         # Get job and its category tier
         job = db.query(Job).filter(Job.id == job_id).first()
