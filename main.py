@@ -44,10 +44,31 @@ async def lifespan(app: FastAPI):
             Base.metadata.create_all(bind=engine, checkfirst=True)
             print("✅ Database tables created successfully")
             
-            # Add city column if it doesn't exist
+            # Add missing columns
             from sqlalchemy import text
             from app.database import SessionLocal
             db = SessionLocal()
+            try:
+                # Add company_user_id to companies table if missing
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='companies' AND column_name='company_user_id';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding company_user_id column to companies table...")
+                    db.execute(text("""
+                        ALTER TABLE companies 
+                        ADD COLUMN company_user_id INTEGER REFERENCES company_users(id) ON DELETE CASCADE;
+                    """))
+                    db.commit()
+                    print("✅ company_user_id column added")
+                else:
+                    print("✅ company_user_id column already exists")
+            except Exception as e:
+                print(f"⚠️  Could not add company_user_id: {e}")
+                db.rollback()
+            
             try:
                 # Check if city column exists
                 result = db.execute(text("""
