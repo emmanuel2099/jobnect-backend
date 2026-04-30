@@ -22,7 +22,9 @@ def _normalize_user_type(raw_value: Optional[str]) -> str:
 
 @router.post("/registration")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    """Register a new user (auto-login without OTP)"""
+    """Register a new user - routes to correct table based on user type"""
+    from app.models import JobSeeker, CompanyUser
+    
     try:
         print(f"📝 Registration request received for: {user_data.email}")
         
@@ -35,34 +37,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                 "data": {}
             }
         
-        # Check if email already exists
-        print("🔍 Checking if email exists...")
-        existing_user = db.query(User).filter(User.email == user_data.email).first()
-        if existing_user:
-            print("❌ Email already exists")
-            return {
-                "success": False,
-                "message": "Validation errors",
-                "data": {"email": ["The email has already been taken."]}
-            }
-        
-        # Check if phone already exists
-        print("🔍 Checking if phone exists...")
-        existing_phone = db.query(User).filter(User.phone == user_data.phone).first()
-        if existing_phone:
-            print("❌ Phone already exists")
-            return {
-                "success": False,
-                "message": "Validation errors",
-                "data": {"phone": ["The phone has already been taken."]}
-            }
-        
-        # Hash password
-        print("🔐 Hashing password...")
-        hashed_pwd = hash_password(user_data.password)
-        print(f"✅ Password hashed (length: {len(hashed_pwd)})")
-        
-        # Determine user type using explicit type first, then fallback to legacy company field.
+        # Determine user type
         requested_user_type = _normalize_user_type(user_data.user_type) or _normalize_user_type(user_data.account_type)
         if requested_user_type:
             user_type = requested_user_type
@@ -71,84 +46,170 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         else:
             user_type = "company"
             
-        print(f"🔍 Debug: determined user_type: {user_type}")
+        print(f"🔍 Determined user_type: {user_type}")
         
-        # Get company logo from request body if provided
-        company_logo = None
-        if hasattr(user_data, 'company_logo') and user_data.company_logo:
-            company_logo = user_data.company_logo
+        # Hash password
+        print("🔐 Hashing password...")
+        hashed_pwd = hash_password(user_data.password)
+        print(f"✅ Password hashed (length: {len(hashed_pwd)})")
         
-        # Create new user
-        print(f"👤 Creating new user with type: {user_type}...")
-        new_user = User(
-            name=user_data.name,
-            email=user_data.email,
-            phone=user_data.phone,
-            password=hashed_pwd,
-            company=user_data.company or "N/A",
-            company_logo=company_logo,
-            user_type=user_type,
-            is_active=True,
-            is_online=True,
-            last_login=datetime.utcnow()
-        )
-        
-        print("💾 Saving to database...")
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        print(f"✅ User created with ID: {new_user.id}")
-
-        # Keep profile data separated by flow:
-        # - applicants get a Resume row
-        # - companies get a Company row
+        # Route to correct registration based on user type
         if user_type == "company":
-            existing_company = db.query(Company).filter(Company.user_id == new_user.id).first()
-            if not existing_company:
-                db.add(Company(
-                    user_id=new_user.id,
-                    name=(user_data.company or user_data.name).strip(),
-                    logo=company_logo,
-                    email=new_user.email,
-                    phone=new_user.phone,
-                    is_active=True
-                ))
-                db.commit()
-        else:
-            existing_resume = db.query(Resume).filter(Resume.user_id == new_user.id).first()
-            if not existing_resume:
-                db.add(Resume(user_id=new_user.id))
-                db.commit()
-        
-        # Generate access token for immediate login (OTP will be post-registration KYC)
-        print("🔑 Generating access token for immediate login...")
-        access_token = create_access_token(
-            data={"sub": new_user.email, "user_id": new_user.id}
-        )
-        
-        response = {
-            "success": True,
-            "message": "Registration successful - Welcome to Eagle's Pride!",
-            "data": {
-                "token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": new_user.id,
-                    "name": new_user.name,
-                    "email": new_user.email,
-                    "phone": new_user.phone,
-                    "company": new_user.company,
-                    "companyLogo": new_user.company_logo,
-                    "userType": new_user.user_type,
-                    "profilePhoto": new_user.profile_photo,
-                    "email_verified": False,  # KYC pending
-                    "kyc_required": True  # User must complete KYC
-                },
-                "kyc_message": "Please complete email verification to access all features"
+            # Check if company user already exists
+            print("🔍 Checking if company email/phone exists...")
+            if db.query(CompanyUser).filter(CompanyUser.email == user_data.email).first():
+                print("❌ Company email already exists")
+                return {
+                    "success": False,
+                    "message": "Validation errors",
+                    "data": {"email": ["The email has already been taken."]}
+                }
+            
+            if db.query(CompanyUser).filter(CompanyUser.phone == user_data.phone).first():
+                print("❌ Company phone already exists")
+                return {
+                    "success": False,
+                    "message": "Validation errors",
+                    "data": {"phone": ["The phone has already been taken."]}
+                }
+            
+            # Get company logo
+            company_logo = None
+            if hasattr(user_data, 'company_logo') and user_data.company_logo:
+                company_logo = user_data.company_logo
+            
+            # Create company user
+            print(f"👤 Creating new company user...")
+            new_company_user = CompanyUser(
+                name=user_data.name,
+                email=user_data.email,
+                phone=user_data.phone,
+                password=hashed_pwd,
+                company_name=user_data.company or user_data.name,
+                company_logo=company_logo,
+                is_active=True,
+                is_online=True,
+                last_login=datetime.utcnow()
+            )
+            
+            print("💾 Saving company user to database...")
+            db.add(new_company_user)
+            db.commit()
+            db.refresh(new_company_user)
+            print(f"✅ Company user created with ID: {new_company_user.id}")
+            
+            # Create associated company record
+            print("🏢 Creating company record...")
+            new_company = Company(
+                company_user_id=new_company_user.id,
+                name=user_data.company or user_data.name,
+                logo=company_logo,
+                email=user_data.email,
+                phone=user_data.phone,
+                is_active=True
+            )
+            db.add(new_company)
+            db.commit()
+            db.refresh(new_company)
+            print(f"✅ Company record created with ID: {new_company.id}")
+            
+            # Generate access token
+            print("🔑 Generating access token...")
+            access_token = create_access_token(
+                data={"sub": new_company_user.email, "user_id": new_company_user.id, "user_type": "company"}
+            )
+            
+            response = {
+                "success": True,
+                "message": "Registration successful - Welcome to Eagle's Pride!",
+                "data": {
+                    "token": access_token,
+                    "token_type": "bearer",
+                    "user": {
+                        "id": new_company_user.id,
+                        "name": new_company_user.name,
+                        "email": new_company_user.email,
+                        "phone": new_company_user.phone,
+                        "company": new_company_user.company_name,
+                        "companyLogo": new_company_user.company_logo,
+                        "userType": "company",
+                        "profilePhoto": new_company_user.profile_photo,
+                        "company_id": new_company.id,
+                        "email_verified": False,
+                        "kyc_required": True
+                    },
+                    "kyc_message": "Please complete email verification to access all features"
+                }
             }
-        }
-        print("✅ Registration successful with immediate login, KYC pending")
-        return response
+            print("✅ Company registration successful")
+            return response
+            
+        else:  # Job seeker / applicant
+            # Check if job seeker already exists
+            print("🔍 Checking if job seeker email/phone exists...")
+            if db.query(JobSeeker).filter(JobSeeker.email == user_data.email).first():
+                print("❌ Job seeker email already exists")
+                return {
+                    "success": False,
+                    "message": "Validation errors",
+                    "data": {"email": ["The email has already been taken."]}
+                }
+            
+            if db.query(JobSeeker).filter(JobSeeker.phone == user_data.phone).first():
+                print("❌ Job seeker phone already exists")
+                return {
+                    "success": False,
+                    "message": "Validation errors",
+                    "data": {"phone": ["The phone has already been taken."]}
+                }
+            
+            # Create job seeker
+            print(f"👤 Creating new job seeker...")
+            new_job_seeker = JobSeeker(
+                name=user_data.name,
+                email=user_data.email,
+                phone=user_data.phone,
+                password=hashed_pwd,
+                is_active=True,
+                is_online=True,
+                last_login=datetime.utcnow()
+            )
+            
+            print("💾 Saving job seeker to database...")
+            db.add(new_job_seeker)
+            db.commit()
+            db.refresh(new_job_seeker)
+            print(f"✅ Job seeker created with ID: {new_job_seeker.id}")
+            
+            # Generate access token
+            print("🔑 Generating access token...")
+            access_token = create_access_token(
+                data={"sub": new_job_seeker.email, "user_id": new_job_seeker.id, "user_type": "applicant"}
+            )
+            
+            response = {
+                "success": True,
+                "message": "Registration successful - Welcome to Eagle's Pride!",
+                "data": {
+                    "token": access_token,
+                    "token_type": "bearer",
+                    "user": {
+                        "id": new_job_seeker.id,
+                        "name": new_job_seeker.name,
+                        "email": new_job_seeker.email,
+                        "phone": new_job_seeker.phone,
+                        "company": "N/A",
+                        "companyLogo": None,
+                        "userType": "applicant",
+                        "profilePhoto": new_job_seeker.profile_photo,
+                        "email_verified": False,
+                        "kyc_required": True
+                    },
+                    "kyc_message": "Please complete email verification to access all features"
+                }
+            }
+            print("✅ Job seeker registration successful")
+            return response
         
     except Exception as e:
         print(f"❌ ERROR in registration: {str(e)}")
