@@ -419,11 +419,6 @@ async def get_kyc_status(current_user = Depends(get_current_user), db: Session =
             "document_number": kyc.document_number
         }
     }
-            "last_name": kyc.last_name,
-            "document_type": kyc.document_type,
-            "submitted_at": str(kyc.created_at)
-        }
-    }
 
 @router.get("/company/profile")
 async def get_company_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
