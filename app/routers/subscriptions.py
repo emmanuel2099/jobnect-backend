@@ -55,7 +55,12 @@ def get_subscription_plans(
     db: Session = Depends(get_db)
 ):
     """Get all available subscription plans with user-specific pricing"""
+    from app.models import JobSeeker, CompanyUser
+    
     plans = db.query(SubscriptionPlan).filter(SubscriptionPlan.is_active == True).all()
+    
+    # Determine user type
+    is_company = isinstance(current_user, CompanyUser) or (hasattr(current_user, 'user_type') and current_user.user_type == "company")
     
     # Apply pricing based on user type
     result = []
@@ -72,9 +77,9 @@ def get_subscription_plans(
         # Set price based on user type
         # Companies: Low ₦10,000, High ₦20,000
         # Job Seekers: Low ₦3,000, High ₦10,000
-        if current_user.user_type == "company":
+        if is_company:
             plan_dict["price"] = 20000.0 if plan.tier == "high" else 10000.0
-        else:  # applicant
+        else:  # job seeker/applicant
             plan_dict["price"] = 10000.0 if plan.tier == "high" else 3000.0
         
         result.append(plan_dict)
@@ -185,12 +190,17 @@ def check_access(
     db: Session = Depends(get_db)
 ):
     """Check if user can post a job (company) or apply to a job (job seeker)"""
+    from app.models import JobSeeker, CompanyUser
     
-    if current_user.user_type == "company":
+    # Determine user type
+    is_company = isinstance(current_user, CompanyUser) or (hasattr(current_user, 'user_type') and current_user.user_type == "company")
+    is_job_seeker = isinstance(current_user, JobSeeker) or (hasattr(current_user, 'user_type') and current_user.user_type == "applicant")
+    
+    if is_company:
         if not request.category_id:
             raise HTTPException(status_code=400, detail="category_id required for companies")
         result = SubscriptionService.can_post_job(db, current_user.id, request.category_id)
-    elif current_user.user_type == "applicant":
+    elif is_job_seeker:
         if not request.job_id:
             raise HTTPException(status_code=400, detail="job_id required for job seekers")
         result = SubscriptionService.can_apply_to_job(db, current_user.id, request.job_id)
