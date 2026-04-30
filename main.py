@@ -188,6 +188,28 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"⚠️  Warning: Could not fix conversations/messages tables: {e}")
                 db.rollback()
+            
+            # Fix job_applications table - add job_seeker_id column
+            try:
+                print("\n🔄 Checking job_applications table...")
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='job_applications' AND column_name='job_seeker_id';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding job_seeker_id column to job_applications table...")
+                    db.execute(text("""
+                        ALTER TABLE job_applications 
+                        ADD COLUMN job_seeker_id INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE;
+                    """))
+                    db.commit()
+                    print("✅ job_seeker_id column added successfully")
+                else:
+                    print("✅ job_seeker_id column already exists")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not add job_seeker_id column: {e}")
+                db.rollback()
             finally:
                 db.close()
             
