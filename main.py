@@ -136,6 +136,58 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"⚠️  Warning: Could not add columns: {e}")
                 db.rollback()
+            
+            # Fix conversations and messages tables
+            try:
+                print("\n🔄 Checking conversations table...")
+                # Add missing columns to conversations table
+                conversations_columns = [
+                    ("job_seeker1_id", "INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE"),
+                    ("job_seeker2_id", "INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE"),
+                    ("company_user1_id", "INTEGER REFERENCES company_users(id) ON DELETE CASCADE"),
+                    ("company_user2_id", "INTEGER REFERENCES company_users(id) ON DELETE CASCADE"),
+                ]
+                
+                for col_name, col_type in conversations_columns:
+                    result = db.execute(text(f"""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name='conversations' AND column_name='{col_name}';
+                    """))
+                    if not result.fetchone():
+                        print(f"🔄 Adding {col_name} to conversations table...")
+                        db.execute(text(f"ALTER TABLE conversations ADD COLUMN {col_name} {col_type};"))
+                        db.commit()
+                        print(f"✅ {col_name} added")
+                    else:
+                        print(f"✅ {col_name} already exists")
+                
+                print("\n🔄 Checking messages table...")
+                # Add missing columns to messages table
+                messages_columns = [
+                    ("job_seeker_sender_id", "INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE"),
+                    ("job_seeker_receiver_id", "INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE"),
+                    ("company_user_sender_id", "INTEGER REFERENCES company_users(id) ON DELETE CASCADE"),
+                    ("company_user_receiver_id", "INTEGER REFERENCES company_users(id) ON DELETE CASCADE"),
+                ]
+                
+                for col_name, col_type in messages_columns:
+                    result = db.execute(text(f"""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name='messages' AND column_name='{col_name}';
+                    """))
+                    if not result.fetchone():
+                        print(f"🔄 Adding {col_name} to messages table...")
+                        db.execute(text(f"ALTER TABLE messages ADD COLUMN {col_name} {col_type};"))
+                        db.commit()
+                        print(f"✅ {col_name} added")
+                    else:
+                        print(f"✅ {col_name} already exists")
+                        
+            except Exception as e:
+                print(f"⚠️  Warning: Could not fix conversations/messages tables: {e}")
+                db.rollback()
             finally:
                 db.close()
             
