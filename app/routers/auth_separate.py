@@ -13,7 +13,7 @@ from datetime import datetime
 router = APIRouter()
 
 # Job Seeker Authentication
-@router.post("/job-seeker/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+@router.post("/job-seeker/register", status_code=status.HTTP_201_CREATED)
 async def job_seeker_register(job_seeker_data: JobSeekerRegister, db: Session = Depends(get_db)):
     """Register a new job seeker"""
     print("Received job seeker registration request")
@@ -21,25 +21,19 @@ async def job_seeker_register(job_seeker_data: JobSeekerRegister, db: Session = 
     # Check if job seeker already exists
     if db.query(JobSeeker).filter(JobSeeker.email == job_seeker_data.email).first():
         print(f"Job seeker with email {job_seeker_data.email} already exists")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "message": "Validation errors",
-                "data": {"email": ["The email has already been taken."]}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Validation errors",
+            "data": {"email": ["The email has already been taken."]}
+        }
         
     if db.query(JobSeeker).filter(JobSeeker.phone == job_seeker_data.phone).first():
         print(f"Job seeker with phone {job_seeker_data.phone} already exists")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "message": "Validation errors",
-                "data": {"phone": ["The phone has already been taken."]}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Validation errors",
+            "data": {"phone": ["The phone has already been taken."]}
+        }
         
     # Hash password
     print("🔐 Hashing password...")
@@ -91,7 +85,7 @@ async def job_seeker_register(job_seeker_data: JobSeekerRegister, db: Session = 
     
     return response
 
-@router.post("/job-seeker/login", response_model=Token)
+@router.post("/job-seeker/login")
 async def job_seeker_login(login_data: JobSeekerLogin, db: Session = Depends(get_db)):
     """Login job seeker"""
     print(f"🔍 Job seeker login attempt: {login_data.email}")
@@ -101,25 +95,19 @@ async def job_seeker_login(login_data: JobSeekerLogin, db: Session = Depends(get
     
     if not job_seeker or not verify_password(login_data.password, job_seeker.password):
         print("❌ Invalid credentials for job seeker")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "message": "Invalid credentials",
-                "data": {}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Invalid credentials",
+            "data": {}
+        }
     
     if not job_seeker.is_active:
         print("❌ Job seeker account is deactivated")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "message": "Account is deactivated",
-                "data": {}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Account is deactivated",
+            "data": {}
+        }
     
     # Update last login
     job_seeker.last_login = datetime.utcnow()
@@ -153,7 +141,7 @@ async def job_seeker_login(login_data: JobSeekerLogin, db: Session = Depends(get
     }
 
 # Company User Authentication
-@router.post("/company/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+@router.post("/company/register", status_code=status.HTTP_201_CREATED)
 async def company_user_register(company_user_data: CompanyUserRegister, db: Session = Depends(get_db)):
     """Register a new company user"""
     print("Received company user registration request")
@@ -161,25 +149,19 @@ async def company_user_register(company_user_data: CompanyUserRegister, db: Sess
     # Check if company user already exists
     if db.query(CompanyUser).filter(CompanyUser.email == company_user_data.email).first():
         print(f"Company user with email {company_user_data.email} already exists")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "message": "Validation errors",
-                "data": {"email": ["The email has already been taken."]}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Validation errors",
+            "data": {"email": ["The email has already been taken."]}
+        }
         
     if db.query(CompanyUser).filter(CompanyUser.phone == company_user_data.phone).first():
         print(f"Company user with phone {company_user_data.phone} already exists")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "success": False,
-                "message": "Validation errors",
-                "data": {"phone": ["The phone has already been taken."]}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Validation errors",
+            "data": {"phone": ["The phone has already been taken."]}
+        }
         
     # Hash password
     print("🔐 Hashing password...")
@@ -251,7 +233,7 @@ async def company_user_register(company_user_data: CompanyUserRegister, db: Sess
     
     return response
 
-@router.post("/company/login", response_model=Token)
+@router.post("/company/login")
 async def company_user_login(login_data: CompanyUserLogin, db: Session = Depends(get_db)):
     """Login company user"""
     print(f"🔍 Company user login attempt: {login_data.email}")
@@ -261,25 +243,19 @@ async def company_user_login(login_data: CompanyUserLogin, db: Session = Depends
     
     if not company_user or not verify_password(login_data.password, company_user.password):
         print("❌ Invalid credentials for company user")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "message": "Invalid credentials",
-                "data": {}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Invalid credentials",
+            "data": {}
+        }
     
     if not company_user.is_active:
         print("❌ Company user account is deactivated")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "success": False,
-                "message": "Account is deactivated",
-                "data": {}
-            }
-        )
+        return {
+            "success": False,
+            "message": "Account is deactivated",
+            "data": {}
+        }
     
     # Update last login
     company_user.last_login = datetime.utcnow()
@@ -319,7 +295,7 @@ async def company_user_login(login_data: CompanyUserLogin, db: Session = Depends
     }
 
 # Universal Login (tries both tables)
-@router.post("/universal-login", response_model=Token)
+@router.post("/universal-login")
 async def universal_login(login_data: UserLogin, db: Session = Depends(get_db)):
     """Universal login - tries both job seeker and company user tables"""
     print(f"🔍 Universal login attempt: {login_data.email}")
@@ -328,14 +304,11 @@ async def universal_login(login_data: UserLogin, db: Session = Depends(get_db)):
     job_seeker = db.query(JobSeeker).filter(JobSeeker.email == login_data.email).first()
     if job_seeker and verify_password(login_data.password, job_seeker.password):
         if not job_seeker.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "success": False,
-                    "message": "Account is deactivated",
-                    "data": {}
-                }
-            )
+            return {
+                "success": False,
+                "message": "Account is deactivated",
+                "data": {}
+            }
         
         # Update last login
         job_seeker.last_login = datetime.utcnow()
@@ -371,14 +344,11 @@ async def universal_login(login_data: UserLogin, db: Session = Depends(get_db)):
     company_user = db.query(CompanyUser).filter(CompanyUser.email == login_data.email).first()
     if company_user and verify_password(login_data.password, company_user.password):
         if not company_user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "success": False,
-                    "message": "Account is deactivated",
-                    "data": {}
-                }
-            )
+            return {
+                "success": False,
+                "message": "Account is deactivated",
+                "data": {}
+            }
         
         # Update last login
         company_user.last_login = datetime.utcnow()
@@ -418,11 +388,8 @@ async def universal_login(login_data: UserLogin, db: Session = Depends(get_db)):
     
     # If not found in either table
     print("❌ Invalid credentials - not found in either table")
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={
-            "success": False,
-            "message": "Invalid credentials",
-            "data": {}
-        }
-    )
+    return {
+        "success": False,
+        "message": "Invalid credentials",
+        "data": {}
+    }
