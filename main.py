@@ -217,28 +217,16 @@ app = FastAPI(
 )
 
 # CORS middleware - Enhanced for web support
+# IMPORTANT: allow_origins=["*"] with allow_credentials=True doesn't work
+# We need to explicitly allow all origins by using a regex pattern
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",  # Allow all origins during development
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://localhost:*",
-        "https://127.0.0.1:*",
-    ],
+    allow_origin_regex=r".*",  # Allow all origins (development and production)
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "*",
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers",
-    ],
-    expose_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Mount static files
