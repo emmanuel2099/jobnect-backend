@@ -43,6 +43,9 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
+    """Get current user from token - works with new auth system (job_seekers/company_users)"""
+    from app.models import JobSeeker, CompanyUser
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -52,12 +55,25 @@ def get_current_user(
         token = credentials.credentials
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: int = payload.get("user_id")
+        user_type: str = payload.get("user_type", "")
+        
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == user_id).first()
+    # Try to find user based on user_type in token
+    if user_type == "company":
+        user = db.query(CompanyUser).filter(CompanyUser.id == user_id).first()
+    else:
+        # Default to job seeker for applicants
+        user = db.query(JobSeeker).filter(JobSeeker.id == user_id).first()
+    
+    if user is None:
+        # Fallback: try legacy users table
+        user = db.query(User).filter(User.id == user_id).first()
+    
     if user is None:
         raise credentials_exception
+    
     return user

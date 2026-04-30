@@ -324,34 +324,63 @@ async def delete_social_link(link_id: int, current_user: User = Depends(get_curr
 
 # KYC
 @router.post("/applicant/kyc/store")
-async def submit_kyc(data: KYCSubmit, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def submit_kyc(data: KYCSubmit, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     """Submit KYC verification"""
+    from app.models import JobSeeker
     
-    # Check if KYC already exists
-    existing_kyc = db.query(KYC).filter(KYC.user_id == current_user.id).first()
+    # Determine if user is from job_seekers or users table
+    is_job_seeker = isinstance(current_user, JobSeeker)
     
-    if existing_kyc:
-        # Update existing KYC
-        existing_kyc.first_name = data.first_name
-        existing_kyc.last_name = data.last_name
-        existing_kyc.document_type = data.document_type
-        existing_kyc.document_number = data.document_number
-        existing_kyc.document_file = data.document_file
-        existing_kyc.status = "pending"
-        db.commit()
+    if is_job_seeker:
+        # Check if KYC already exists for job seeker
+        existing_kyc = db.query(KYC).filter(KYC.job_seeker_id == current_user.id).first()
+        
+        if existing_kyc:
+            # Update existing KYC
+            existing_kyc.first_name = data.first_name
+            existing_kyc.last_name = data.last_name
+            existing_kyc.document_type = data.document_type
+            existing_kyc.document_number = data.document_number
+            existing_kyc.document_file = data.document_file
+            existing_kyc.status = "pending"
+            db.commit()
+        else:
+            # Create new KYC
+            kyc = KYC(
+                job_seeker_id=current_user.id,
+                first_name=data.first_name,
+                last_name=data.last_name,
+                document_type=data.document_type,
+                document_number=data.document_number,
+                document_file=data.document_file,
+                status="pending"
+            )
+            db.add(kyc)
+            db.commit()
     else:
-        # Create new KYC
-        kyc = KYC(
-            user_id=current_user.id,
-            first_name=data.first_name,
-            last_name=data.last_name,
-            document_type=data.document_type,
-            document_number=data.document_number,
-            document_file=data.document_file,
-            status="pending"
-        )
-        db.add(kyc)
-        db.commit()
+        # Legacy users table support
+        existing_kyc = db.query(KYC).filter(KYC.user_id == current_user.id).first()
+        
+        if existing_kyc:
+            existing_kyc.first_name = data.first_name
+            existing_kyc.last_name = data.last_name
+            existing_kyc.document_type = data.document_type
+            existing_kyc.document_number = data.document_number
+            existing_kyc.document_file = data.document_file
+            existing_kyc.status = "pending"
+            db.commit()
+        else:
+            kyc = KYC(
+                user_id=current_user.id,
+                first_name=data.first_name,
+                last_name=data.last_name,
+                document_type=data.document_type,
+                document_number=data.document_number,
+                document_file=data.document_file,
+                status="pending"
+            )
+            db.add(kyc)
+            db.commit()
     
     return {
         "success": True,
@@ -360,10 +389,17 @@ async def submit_kyc(data: KYCSubmit, current_user: User = Depends(get_current_u
     }
 
 @router.get("/applicant/kyc/get/status")
-async def get_kyc_status(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_kyc_status(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get KYC verification status"""
+    from app.models import JobSeeker
     
-    kyc = db.query(KYC).filter(KYC.user_id == current_user.id).first()
+    # Determine if user is from job_seekers or users table
+    is_job_seeker = isinstance(current_user, JobSeeker)
+    
+    if is_job_seeker:
+        kyc = db.query(KYC).filter(KYC.job_seeker_id == current_user.id).first()
+    else:
+        kyc = db.query(KYC).filter(KYC.user_id == current_user.id).first()
     
     if not kyc:
         return {
@@ -378,6 +414,11 @@ async def get_kyc_status(current_user: User = Depends(get_current_user), db: Ses
         "data": {
             "status": kyc.status,
             "first_name": kyc.first_name,
+            "last_name": kyc.last_name,
+            "document_type": kyc.document_type,
+            "document_number": kyc.document_number
+        }
+    }
             "last_name": kyc.last_name,
             "document_type": kyc.document_type,
             "submitted_at": str(kyc.created_at)
