@@ -189,6 +189,66 @@ async def lifespan(app: FastAPI):
                 print(f"⚠️  Warning: Could not fix conversations/messages tables: {e}")
                 db.rollback()
             
+            # Fix subscriptions table - add job_seeker_id and company_user_id columns
+            try:
+                print("\n🔄 Checking subscriptions table for new foreign keys...")
+                
+                # Check and add job_seeker_id
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='subscriptions' AND column_name='job_seeker_id';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding job_seeker_id to subscriptions table...")
+                    db.execute(text("ALTER TABLE subscriptions ADD COLUMN job_seeker_id INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE;"))
+                    db.commit()
+                    print("✅ job_seeker_id added")
+                else:
+                    print("✅ job_seeker_id already exists")
+                
+                # Check and add company_user_id
+                result = db.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='subscriptions' AND column_name='company_user_id';
+                """))
+                if not result.fetchone():
+                    print("🔄 Adding company_user_id to subscriptions table...")
+                    db.execute(text("ALTER TABLE subscriptions ADD COLUMN company_user_id INTEGER REFERENCES company_users(id) ON DELETE CASCADE;"))
+                    db.commit()
+                    print("✅ company_user_id added")
+                else:
+                    print("✅ company_user_id already exists")
+                
+                # Migrate existing data
+                print("🔄 Migrating existing subscription data...")
+                
+                # For job seekers
+                db.execute(text("""
+                    UPDATE subscriptions s
+                    SET job_seeker_id = js.id
+                    FROM job_seekers js
+                    WHERE s.user_id = js.id
+                    AND s.job_seeker_id IS NULL
+                """))
+                
+                # For companies
+                db.execute(text("""
+                    UPDATE subscriptions s
+                    SET company_user_id = cu.id
+                    FROM company_users cu
+                    WHERE s.user_id = cu.id
+                    AND s.company_user_id IS NULL
+                """))
+                
+                db.commit()
+                print("✅ Subscription data migrated")
+                
+            except Exception as e:
+                print(f"⚠️  Warning: Could not fix subscriptions table: {e}")
+                db.rollback()
+            
             # Fix job_applications table - add job_seeker_id column
             try:
                 print("\n🔄 Checking job_applications table...")

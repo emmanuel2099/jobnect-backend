@@ -505,9 +505,9 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id"), nullable=False)
-    company_user_id = Column(Integer, ForeignKey("company_users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Legacy support
+    job_seeker_id = Column(Integer, ForeignKey("job_seekers.id"), nullable=True)  # New system
+    company_user_id = Column(Integer, ForeignKey("company_users.id"), nullable=True)  # New system
     plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
     status = Column(String(50), default="active")  # active, expired, cancelled
     start_date = Column(DateTime, default=datetime.utcnow)
