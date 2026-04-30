@@ -18,135 +18,159 @@ router = APIRouter()
 async def get_resume_details(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get complete resume details"""
     
-    # Check if current_user is a JobSeeker or legacy User
-    from app.models import JobSeeker
-    is_job_seeker = isinstance(current_user, JobSeeker)
-    
-    # Get or create resume based on user type
-    if is_job_seeker:
-        resume = db.query(Resume).filter(Resume.job_seeker_id == current_user.id).first()
-        if not resume:
-            resume = Resume(job_seeker_id=current_user.id)
-            db.add(resume)
-            db.commit()
-            db.refresh(resume)
-    else:
-        resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
-        if not resume:
-            resume = Resume(user_id=current_user.id)
-            db.add(resume)
-            db.commit()
-            db.refresh(resume)
-    
-    # Get all related data
-    experiences = db.query(Experience).filter(Experience.resume_id == resume.id).all()
-    educations = db.query(Education).filter(Education.resume_id == resume.id).all()
-    trainings = db.query(Training).filter(Training.resume_id == resume.id).all()
-    languages = db.query(Language).filter(Language.resume_id == resume.id).all()
-    references = db.query(Reference).filter(Reference.resume_id == resume.id).all()
-    
-    # Parse skills from JSON
-    import json
-    skills = []
-    if resume.skills:
-        try:
-            skills = json.loads(resume.skills)
-        except:
-            skills = []
-    
-    return {
-        "success": True,
-        "message": "Resume details retrieved",
-        "data": {
-            "user": {
-                "id": current_user.id,
-                "name": current_user.name,
-                "email": current_user.email,
-                "phone": current_user.phone,
-                "company": current_user.company,
-                "profilePhoto": current_user.profile_photo
-            },
-            "resume": {
-                "id": resume.id,
-                "designation": resume.designation,
-                "city": resume.city,
-                "father_name": resume.father_name,
-                "mother_name": resume.mother_name,
-                "date_of_birth": str(resume.date_of_birth) if resume.date_of_birth else None,
-                "age": resume.age,
-                "gender": resume.gender,
-                "religion": resume.religion,
-                "marital_status": resume.marital_status,
-                "nationality": resume.nationality,
-                "nid": resume.nid,
-                "present_address": resume.present_address,
-                "permanent_address": resume.permanent_address,
-                "objective": resume.objective,
-                "present_salary": resume.present_salary,
-                "expected_salary": resume.expected_salary,
-                "job_level": resume.job_level,
-                "job_nature": resume.job_nature,
-                "skills": skills
-            },
-            "experiences": [
-                {
-                    "id": exp.id,
-                    "business": exp.business,
-                    "employer": exp.employer,
-                    "designation": exp.designation,
-                    "department": exp.department,
-                    "responsibilities": exp.responsibilities,
-                    "start_date": str(exp.start_date),
-                    "end_date": str(exp.end_date) if exp.end_date else None
-                } for exp in experiences
-            ],
-            "educations": [
-                {
-                    "id": edu.id,
-                    "level": edu.level,
-                    "degree": edu.degree,
-                    "institution": edu.institution,
-                    "exam": edu.exam,
-                    "result": edu.result,
-                    "passing_year": edu.passing_year,
-                    "start_date": str(edu.start_date),
-                    "end_date": str(edu.end_date) if edu.end_date else None
-                } for edu in educations
-            ],
-            "trainings": [
-                {
-                    "id": tr.id,
-                    "title": tr.title,
-                    "topics": tr.topics,
-                    "institute": tr.institute,
-                    "location": tr.location,
-                    "start_date": str(tr.start_date),
-                    "end_date": str(tr.end_date) if tr.end_date else None
-                } for tr in trainings
-            ],
-            "languages": [
-                {
-                    "id": lang.id,
-                    "language": lang.language,
-                    "reading": lang.reading,
-                    "writing": lang.writing,
-                    "speaking": lang.speaking
-                } for lang in languages
-            ],
-            "references": [
-                {
-                    "id": ref.id,
-                    "name": ref.name,
-                    "organization": ref.organization,
-                    "designation": ref.designation,
-                    "address": ref.address,
-                    "phone": ref.phone,
-                    "email": ref.email,
-                    "relation": ref.relation
-                } for ref in references
-            ]
+    try:
+        # Check if current_user is a JobSeeker or legacy User
+        from app.models import JobSeeker
+        is_job_seeker = isinstance(current_user, JobSeeker)
+        
+        # Get or create resume based on user type
+        if is_job_seeker:
+            resume = db.query(Resume).filter(Resume.job_seeker_id == current_user.id).first()
+            if not resume:
+                resume = Resume(job_seeker_id=current_user.id)
+                db.add(resume)
+                db.commit()
+                db.refresh(resume)
+        else:
+            resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
+            if not resume:
+                resume = Resume(user_id=current_user.id)
+                db.add(resume)
+                db.commit()
+                db.refresh(resume)
+    except Exception as e:
+        print(f"❌ Error getting/creating resume: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Failed to get resume: {str(e)}",
+            "data": {}
         }
-    }
+    
+    try:
+        # Get all related data
+        experiences = db.query(Experience).filter(Experience.resume_id == resume.id).all()
+        educations = db.query(Education).filter(Education.resume_id == resume.id).all()
+        trainings = db.query(Training).filter(Training.resume_id == resume.id).all()
+        languages = db.query(Language).filter(Language.resume_id == resume.id).all()
+        references = db.query(Reference).filter(Reference.resume_id == resume.id).all()
+        
+        # Parse skills from JSON
+        import json
+        skills = []
+        if resume.skills:
+            try:
+                skills = json.loads(resume.skills)
+            except:
+                skills = []
+        
+        # Handle company field safely (may not exist for JobSeeker)
+        company_value = getattr(current_user, 'company', None)
+        profile_photo = getattr(current_user, 'profile_photo', None)
+        
+        return {
+            "success": True,
+            "message": "Resume details retrieved",
+            "data": {
+                "user": {
+                    "id": current_user.id,
+                    "name": current_user.name,
+                    "email": current_user.email,
+                    "phone": current_user.phone,
+                    "company": company_value,
+                    "profilePhoto": profile_photo
+                },
+                "resume": {
+                    "id": resume.id,
+                    "designation": resume.designation,
+                    "city": resume.city,
+                    "father_name": resume.father_name,
+                    "mother_name": resume.mother_name,
+                    "date_of_birth": str(resume.date_of_birth) if resume.date_of_birth else None,
+                    "age": resume.age,
+                    "gender": resume.gender,
+                    "religion": resume.religion,
+                    "marital_status": resume.marital_status,
+                    "nationality": resume.nationality,
+                    "nid": resume.nid,
+                    "present_address": resume.present_address,
+                    "permanent_address": resume.permanent_address,
+                    "objective": resume.objective,
+                    "present_salary": resume.present_salary,
+                    "expected_salary": resume.expected_salary,
+                    "job_level": resume.job_level,
+                    "job_nature": resume.job_nature,
+                    "skills": skills
+                },
+                "experiences": [
+                    {
+                        "id": exp.id,
+                        "business": exp.business,
+                        "employer": exp.employer,
+                        "designation": exp.designation,
+                        "department": exp.department,
+                        "responsibilities": exp.responsibilities,
+                        "start_date": str(exp.start_date),
+                        "end_date": str(exp.end_date) if exp.end_date else None
+                    } for exp in experiences
+                ],
+                "educations": [
+                    {
+                        "id": edu.id,
+                        "level": edu.level,
+                        "degree": edu.degree,
+                        "institution": edu.institution,
+                        "exam": edu.exam,
+                        "result": edu.result,
+                        "passing_year": edu.passing_year,
+                        "start_date": str(edu.start_date),
+                        "end_date": str(edu.end_date) if edu.end_date else None
+                    } for edu in educations
+                ],
+                "trainings": [
+                    {
+                        "id": tr.id,
+                        "title": tr.title,
+                        "topics": tr.topics,
+                        "institute": tr.institute,
+                        "location": tr.location,
+                        "start_date": str(tr.start_date),
+                        "end_date": str(tr.end_date) if tr.end_date else None
+                    } for tr in trainings
+                ],
+                "languages": [
+                    {
+                        "id": lang.id,
+                        "language": lang.language,
+                        "reading": lang.reading,
+                        "writing": lang.writing,
+                        "speaking": lang.speaking
+                    } for lang in languages
+                ],
+                "references": [
+                    {
+                        "id": ref.id,
+                        "name": ref.name,
+                        "organization": ref.organization,
+                        "designation": ref.designation,
+                        "address": ref.address,
+                        "phone": ref.phone,
+                        "email": ref.email,
+                        "relation": ref.relation
+                    } for ref in references
+                ]
+            }
+        }
+    except Exception as e:
+        print(f"❌ Error retrieving resume data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Failed to retrieve resume data: {str(e)}",
+            "data": {}
+        }
 
 @router.post("/applicant/profile/update")
 async def update_profile(data: ProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
