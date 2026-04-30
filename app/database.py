@@ -40,7 +40,7 @@ if not database_url or database_url == "postgresql://localhost:5432/jobnect_db":
         database_url = f"postgresql://postgres:password@{railway_host}:5432/railway"
         print(f"🔧 Constructed Railway URL: {database_url}")
     else:
-        raise ValueError("DATABASE_URL is not set. Please configure the database connection in Railway Variables.")
+        raise ValueError("DATABASE_URL is not set. Please add DATABASE_URL in Render Dashboard → Environment Variables.")
 
 if database_url.startswith("sqlite"):
     engine = create_engine(
