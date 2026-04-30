@@ -18,13 +18,25 @@ router = APIRouter()
 async def get_resume_details(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get complete resume details"""
     
-    # Get or create resume
-    resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
-    if not resume:
-        resume = Resume(user_id=current_user.id)
-        db.add(resume)
-        db.commit()
-        db.refresh(resume)
+    # Check if current_user is a JobSeeker or legacy User
+    from app.models import JobSeeker
+    is_job_seeker = isinstance(current_user, JobSeeker)
+    
+    # Get or create resume based on user type
+    if is_job_seeker:
+        resume = db.query(Resume).filter(Resume.job_seeker_id == current_user.id).first()
+        if not resume:
+            resume = Resume(job_seeker_id=current_user.id)
+            db.add(resume)
+            db.commit()
+            db.refresh(resume)
+    else:
+        resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
+        if not resume:
+            resume = Resume(user_id=current_user.id)
+            db.add(resume)
+            db.commit()
+            db.refresh(resume)
     
     # Get all related data
     experiences = db.query(Experience).filter(Experience.resume_id == resume.id).all()

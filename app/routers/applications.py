@@ -106,19 +106,32 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
 async def get_applied_jobs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get all jobs the user has applied to"""
     
-    applications = db.query(JobApplication).filter(
-        JobApplication.user_id == current_user.id
-    ).order_by(desc(JobApplication.created_at)).all()
+    # Check if current_user is a JobSeeker or legacy User
+    from app.models import JobSeeker
+    is_job_seeker = isinstance(current_user, JobSeeker)
+    
+    # Query based on user type
+    if is_job_seeker:
+        applications = db.query(JobApplication).filter(
+            JobApplication.job_seeker_id == current_user.id
+        ).order_by(desc(JobApplication.created_at)).all()
+    else:
+        applications = db.query(JobApplication).filter(
+            JobApplication.user_id == current_user.id
+        ).order_by(desc(JobApplication.created_at)).all()
     
     applied_jobs = []
     for app in applications:
         job = db.query(Job).filter(Job.id == app.job_id).first()
         if job:
             company = db.query(Company).filter(Company.id == job.company_id).first()
+            job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
             
             applied_jobs.append({
+                "id": app.id,
                 "application_id": app.id,
                 "status": app.status,
+                "created_at": str(app.created_at),
                 "applied_at": str(app.created_at),
                 "job": {
                     "id": job.id,
@@ -128,6 +141,10 @@ async def get_applied_jobs(current_user: User = Depends(get_current_user), db: S
                     "salary_max": job.salary_max,
                     "location": job.location,
                     "deadline": str(job.deadline) if job.deadline else None,
+                    "job_type": {
+                        "id": job_type.id,
+                        "name": job_type.name
+                    } if job_type else {"id": 1, "name": "FULL-TIME"},
                     "company": {
                         "id": company.id,
                         "name": company.name,
