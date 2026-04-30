@@ -78,15 +78,16 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    resume = relationship("Resume", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
-    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
-    social_links = relationship("SocialLink", back_populates="user", cascade="all, delete-orphan")
-    kyc = relationship("KYC", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="user")
-    subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete-orphan")
+    # Relationships - Fixed the back_populates issue
+    # resume = relationship("Resume", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    # applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
+    # bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
+    # notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    # social_links = relationship("SocialLink", back_populates="user", cascade="all, delete-orphan")
+    # kyc = relationship("KYC", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    # reviews = relationship("Review", back_populates="user")
+    # subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete-orphan")
+    # company = relationship("Company", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 # Resume Model (unified)
 class Resume(Base):
@@ -126,14 +127,13 @@ class Resume(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", back_populates="resume")
-    job_seeker = relationship("JobSeeker", back_populates="resume")
-    experiences = relationship("Experience", back_populates="resume", cascade="all, delete-orphan")
-    educations = relationship("Education", back_populates="resume", cascade="all, delete-orphan")
-    trainings = relationship("Training", back_populates="resume", cascade="all, delete-orphan")
-    languages = relationship("Language", back_populates="resume", cascade="all, delete-orphan")
-    references = relationship("Reference", back_populates="resume", cascade="all, delete-orphan")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # job_seeker = relationship("JobSeeker", back_populates="resume")
+    # experiences = relationship("Experience", back_populates="resume", cascade="all, delete-orphan")
+    # educations = relationship("Education", back_populates="resume", cascade="all, delete-orphan")
+    # trainings = relationship("Training", back_populates="resume", cascade="all, delete-orphan")
+    # languages = relationship("Language", back_populates="resume", cascade="all, delete-orphan")
+    # references = relationship("Reference", back_populates="resume", cascade="all, delete-orphan")
 
 # Experience Model
 class Experience(Base):
@@ -150,7 +150,8 @@ class Experience(Base):
     end_date = Column(Date)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    resume = relationship("Resume", back_populates="experiences")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # resume = relationship("Resume", back_populates="experiences")
 
 # Education Model
 class Education(Base):
@@ -168,7 +169,8 @@ class Education(Base):
     end_date = Column(Date)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    resume = relationship("Resume", back_populates="educations")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # resume = relationship("Resume", back_populates="educations")
 
 # Training Model
 class Training(Base):
@@ -184,7 +186,8 @@ class Training(Base):
     end_date = Column(Date)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    resume = relationship("Resume", back_populates="trainings")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # resume = relationship("Resume", back_populates="trainings")
 
 # Language Model
 class Language(Base):
@@ -198,7 +201,8 @@ class Language(Base):
     speaking = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    resume = relationship("Resume", back_populates="languages")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # resume = relationship("Resume", back_populates="languages")
 
 # Reference Model
 class Reference(Base):
@@ -215,7 +219,8 @@ class Reference(Base):
     relation = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    resume = relationship("Resume", back_populates="references")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # resume = relationship("Resume", back_populates="references")
 
 # Company Model
 class Company(Base):
@@ -239,11 +244,11 @@ class Company(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", back_populates="company")
-    company_user = relationship("CompanyUser", back_populates="company")
-    jobs = relationship("Job", back_populates="company", cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="company")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="company")
+    # company_user = relationship("CompanyUser", back_populates="company")
+    # jobs = relationship("Job", back_populates="company", cascade="all, delete-orphan")
+    # reviews = relationship("Review", back_populates="company")
 
 # Job Category Model
 class JobCategory(Base):
@@ -257,7 +262,8 @@ class JobCategory(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    jobs = relationship("Job", back_populates="category")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # jobs = relationship("Job", back_populates="category")
 
 # City Model
 class City(Base):
@@ -270,7 +276,8 @@ class City(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    jobs = relationship("Job", back_populates="city_rel")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # jobs = relationship("Job", back_populates="city_rel")
 
 # Skill Model
 class Skill(Base):
@@ -301,7 +308,8 @@ class JobType(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    jobs = relationship("Job", back_populates="job_type")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # jobs = relationship("Job", back_populates="job_type")
 
 # Job Level Model
 class JobLevel(Base):
@@ -313,7 +321,8 @@ class JobLevel(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    jobs = relationship("Job", back_populates="job_level")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # jobs = relationship("Job", back_populates="job_level")
 
 # Education Level Model
 class EducationLevel(Base):
@@ -353,15 +362,15 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    company = relationship("Company", back_populates="jobs")
-    category = relationship("JobCategory", back_populates="jobs")
-    city_rel = relationship("City", back_populates="jobs", foreign_keys=[city_id])  # Renamed to avoid conflict
-    job_type = relationship("JobType", back_populates="jobs")
-    job_level = relationship("JobLevel", back_populates="jobs")
-    applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
-    bookmarks = relationship("Bookmark", back_populates="job", cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="job")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # company = relationship("Company", back_populates="jobs")
+    # category = relationship("JobCategory", back_populates="jobs")
+    # city_rel = relationship("City", back_populates="jobs", foreign_keys=[city_id])  # Renamed to avoid conflict
+    # job_type = relationship("JobType", back_populates="jobs")
+    # job_level = relationship("JobLevel", back_populates="jobs")
+    # applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
+    # bookmarks = relationship("Bookmark", back_populates="job", cascade="all, delete-orphan")
+    # reviews = relationship("Review", back_populates="job")
 
 # Job Application Model
 class JobApplication(Base):
@@ -376,9 +385,10 @@ class JobApplication(Base):
     status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User", back_populates="applications")
-    job_seeker = relationship("JobSeeker", back_populates="applications")
-    job = relationship("Job", back_populates="applications")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="applications")
+    # job_seeker = relationship("JobSeeker", back_populates="applications")
+    # job = relationship("Job", back_populates="applications")
 
 # Bookmark Model
 class Bookmark(Base):
@@ -390,9 +400,10 @@ class Bookmark(Base):
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User", back_populates="bookmarks")
-    job_seeker = relationship("JobSeeker", back_populates="bookmarks")
-    job = relationship("Job", back_populates="bookmarks")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="bookmarks")
+    # job_seeker = relationship("JobSeeker", back_populates="bookmarks")
+    # job = relationship("Job", back_populates="bookmarks")
 
 # Notification Model
 class Notification(Base):
@@ -408,9 +419,10 @@ class Notification(Base):
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User", back_populates="notifications")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="notifications")
     # job_seeker = relationship("JobSeeker", back_populates="notifications")  # Temporarily disabled
-    company_user = relationship("CompanyUser", back_populates="notifications")
+    # company_user = relationship("CompanyUser", back_populates="notifications")
 
 # Social Link Model
 class SocialLink(Base):
@@ -424,9 +436,10 @@ class SocialLink(Base):
     url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User", back_populates="social_links")
-    job_seeker = relationship("JobSeeker", back_populates="social_links")
-    company_user = relationship("CompanyUser", back_populates="social_links")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="social_links")
+    # job_seeker = relationship("JobSeeker", back_populates="social_links")
+    # company_user = relationship("CompanyUser", back_populates="social_links")
 
 # KYC Model
 class KYC(Base):
@@ -444,8 +457,9 @@ class KYC(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = relationship("User", back_populates="kyc")
-    job_seeker = relationship("JobSeeker", back_populates="kyc")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="kyc")
+    # job_seeker = relationship("JobSeeker", back_populates="kyc")
 
 # App Setting Model
 class AppSetting(Base):
@@ -483,7 +497,8 @@ class SubscriptionPlan(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    subscriptions = relationship("Subscription", back_populates="plan")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # subscriptions = relationship("Subscription", back_populates="plan")
 
 # User Subscription Model
 class Subscription(Base):
@@ -502,12 +517,12 @@ class Subscription(Base):
     jobs_applied = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", back_populates="subscriptions")
-    job_seeker = relationship("JobSeeker", back_populates="subscriptions")
-    company_user = relationship("CompanyUser", back_populates="subscriptions")
-    plan = relationship("SubscriptionPlan", back_populates="subscriptions")
-    payments = relationship("Payment", back_populates="subscription")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # user = relationship("User", back_populates="subscriptions")
+    # job_seeker = relationship("JobSeeker", back_populates="subscriptions")
+    # company_user = relationship("CompanyUser", back_populates="subscriptions")
+    # plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+    # payments = relationship("Payment", back_populates="subscription")
 
 # Review Model
 class Review(Base):
@@ -528,11 +543,11 @@ class Review(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    company = relationship("Company", back_populates="reviews")
-    user = relationship("User", back_populates="reviews")
-    job_seeker = relationship("JobSeeker", back_populates="reviews")
-    job = relationship("Job", back_populates="reviews")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # company = relationship("Company", back_populates="reviews")
+    # user = relationship("User", back_populates="reviews")
+    # job_seeker = relationship("JobSeeker", back_populates="reviews")
+    # job = relationship("Job", back_populates="reviews")
 
 # Payment Model
 class Payment(Base):
@@ -551,7 +566,8 @@ class Payment(Base):
     payment_date = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    subscription = relationship("Subscription", back_populates="payments")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # subscription = relationship("Subscription", back_populates="payments")
 
 # Conversation Model
 class Conversation(Base):
@@ -567,8 +583,8 @@ class Conversation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 # Message Model
 class Message(Base):
@@ -587,8 +603,8 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    conversation = relationship("Conversation", back_populates="messages")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # conversation = relationship("Conversation", back_populates="messages")
 
 # Feedback Model
 class Feedback(Base):
@@ -607,7 +623,7 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    job_seeker = relationship("User", foreign_keys=[job_seeker_id])
-    company = relationship("Company")
-    job = relationship("Job")
+    # Relationships - Temporarily disabled to fix mapper initialization
+    # job_seeker = relationship("User", foreign_keys=[job_seeker_id])
+    # company = relationship("Company")
+    # job = relationship("Job")
