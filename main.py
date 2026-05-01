@@ -312,6 +312,28 @@ async def lifespan(app: FastAPI):
                 print(f"⚠️  Warning: Could not add FCM token columns: {e}")
                 db.rollback()
 
+            # Fix notifications table - add job_seeker_id and company_user_id columns
+            try:
+                print("\n🔄 Checking notifications table...")
+                for col_name, col_type in [
+                    ("job_seeker_id", "INTEGER REFERENCES job_seekers(id) ON DELETE CASCADE"),
+                    ("company_user_id", "INTEGER REFERENCES company_users(id) ON DELETE CASCADE"),
+                ]:
+                    result = db.execute(text(f"""
+                        SELECT column_name FROM information_schema.columns
+                        WHERE table_name='notifications' AND column_name='{col_name}';
+                    """))
+                    if not result.fetchone():
+                        print(f"🔄 Adding {col_name} to notifications table...")
+                        db.execute(text(f"ALTER TABLE notifications ADD COLUMN {col_name} {col_type};"))
+                        db.commit()
+                        print(f"✅ {col_name} added to notifications")
+                    else:
+                        print(f"✅ notifications.{col_name} already exists")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not fix notifications table: {e}")
+                db.rollback()
+
             # Fix email_otps table - ensure is_used column exists
             try:
                 print("\n🔄 Checking email_otps table...")

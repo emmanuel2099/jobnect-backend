@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from datetime import datetime
 from typing import Optional
 
@@ -10,19 +10,25 @@ from app.auth import get_current_user
 
 router = APIRouter()
 
+
+def _notif_filter(query, current_user):
+    """Return a query filtered to the current user's notifications."""
+    from app.models import JobSeeker, CompanyUser
+    if isinstance(current_user, JobSeeker):
+        return query.filter(Notification.job_seeker_id == current_user.id)
+    elif isinstance(current_user, CompanyUser):
+        return query.filter(Notification.company_user_id == current_user.id)
+    else:
+        return query.filter(Notification.user_id == current_user.id)
+
 @router.get("/notifications")
 async def get_notifications(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get user notifications - works for job seekers, companies, and legacy users"""
-    from app.models import JobSeeker, CompanyUser
-
-    # Determine the correct user_id to query
-    user_id = current_user.id
-
-    notifications = db.query(Notification).filter(
-        Notification.user_id == user_id
+    notifications = _notif_filter(
+        db.query(Notification), current_user
     ).order_by(desc(Notification.created_at)).limit(50).all()
 
     notifications_data = [{
@@ -48,9 +54,8 @@ async def mark_notification_read(
 ):
     """Mark a notification as read"""
     
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.user_id == current_user.id
+    notification = _notif_filter(
+        db.query(Notification).filter(Notification.id == notification_id), current_user
     ).first()
     
     if not notification:
@@ -76,10 +81,9 @@ async def mark_all_notifications_read(
 ):
     """Mark all notifications as read"""
     
-    db.query(Notification).filter(
-        Notification.user_id == current_user.id,
-        Notification.is_read == False
-    ).update({"is_read": True})
+    _notif_filter(
+        db.query(Notification).filter(Notification.is_read == False), current_user
+    ).update({"is_read": True}, synchronize_session=False)
     
     db.commit()
     
@@ -97,9 +101,8 @@ async def delete_notification(
 ):
     """Delete a notification"""
     
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.user_id == current_user.id
+    notification = _notif_filter(
+        db.query(Notification).filter(Notification.id == notification_id), current_user
     ).first()
     
     if not notification:
@@ -125,9 +128,8 @@ async def get_unread_count(
 ):
     """Get count of unread notifications"""
     
-    count = db.query(Notification).filter(
-        Notification.user_id == current_user.id,
-        Notification.is_read == False
+    count = _notif_filter(
+        db.query(Notification).filter(Notification.is_read == False), current_user
     ).count()
     
     return {
