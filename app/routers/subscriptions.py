@@ -369,10 +369,10 @@ def initiate_payment(
         
         print(f"🔵 Payment record created: {payment.id}")
 
-        # Initialize FundsVera payment directly
-        from app.fundsvera_service import fundsvera_service
+        # Initialize Flutterwave payment
+        from app.flutterwave_service import flutterwave_service
         
-        payment_result = fundsvera_service.initialize_payment(
+        payment_result = flutterwave_service.initialize_payment(
             amount=amount,
             email=user_email,
             phone=user_phone,
@@ -382,7 +382,7 @@ def initiate_payment(
             currency="NGN"
         )
         
-        print(f"🔵 FundsVera result: {payment_result.get('success')}")
+        print(f"🔵 Flutterwave result: {payment_result.get('success')}")
         
         if payment_result.get("success"):
             return {
@@ -392,14 +392,14 @@ def initiate_payment(
                 "amount": amount,
                 "currency": "NGN",
                 "plan_name": plan_data["name"],
-                "payment_provider": "fundsvera",
-                "fundsvera_public_key": fundsvera_service.public_key,
-                "message": "Payment initialized. Complete payment with FundsVera."
+                "payment_provider": "flutterwave",
+                "flutterwave_public_key": flutterwave_service.public_key,
+                "message": "Payment initialized. Complete payment with Flutterwave."
             }
         else:
             payment.status = "failed"
             db.commit()
-            raise HTTPException(status_code=400, detail=payment_result.get("message", "FundsVera initialization failed"))
+            raise HTTPException(status_code=400, detail=payment_result.get("message", "Flutterwave initialization failed"))
             
     except HTTPException:
         raise
@@ -448,10 +448,10 @@ def verify_payment(
     if payment.status == "completed":
         raise HTTPException(status_code=400, detail="Payment already verified")
     
-    # Verify with FundsVera
-    from app.fundsvera_service import fundsvera_service
+    # Verify with Flutterwave
+    from app.flutterwave_service import flutterwave_service
 
-    verification_result = fundsvera_service.verify_payment_by_reference(request.transaction_reference)
+    verification_result = flutterwave_service.verify_payment_by_reference(request.transaction_reference)
     
     if not verification_result.get("success"):
         raise HTTPException(status_code=400, detail=verification_result.get("message", "Payment verification failed"))

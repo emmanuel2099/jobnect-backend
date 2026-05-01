@@ -292,6 +292,25 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"⚠️  Warning: Could not fix payments table: {e}")
                 db.rollback()
+
+            # Add FCM token columns for push notifications
+            try:
+                print("\n🔄 Checking FCM token columns...")
+                for table, col in [("job_seekers", "fcm_token"), ("company_users", "fcm_token")]:
+                    result = db.execute(text(f"""
+                        SELECT column_name FROM information_schema.columns
+                        WHERE table_name='{table}' AND column_name='fcm_token';
+                    """))
+                    if not result.fetchone():
+                        print(f"🔄 Adding fcm_token to {table}...")
+                        db.execute(text(f"ALTER TABLE {table} ADD COLUMN fcm_token VARCHAR(500);"))
+                        db.commit()
+                        print(f"✅ fcm_token added to {table}")
+                    else:
+                        print(f"✅ {table}.fcm_token already exists")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not add FCM token columns: {e}")
+                db.rollback()
             finally:
                 db.close()
             

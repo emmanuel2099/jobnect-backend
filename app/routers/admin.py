@@ -938,3 +938,240 @@ async def create_job_level(name: str, description: str = "", db: Session = Depen
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# ADMIN AUTH - Login, Signup, Logout
+# ============================================================
+
+ADMIN_CREDENTIALS = {
+    "email": "admin@eaglespride.com",
+    "password": "EagleAdmin2024!"
+}
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class AdminSignupRequest(BaseModel):
+    email: str
+    password: str
+    secret_key: str  # Required to prevent unauthorized admin creation
+
+ADMIN_SECRET_KEY = "EAGLES_PRIDE_ADMIN_2024"
+
+@router.post("/auth/signup")
+async def admin_signup(data: AdminSignupRequest):
+    """Create admin account (requires secret key)"""
+    if data.secret_key != ADMIN_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    # In production, store in DB. For now, just confirm credentials match
+    return {
+        "success": True,
+        "message": "Admin account confirmed",
+        "data": {"email": data.email}
+    }
+
+@router.post("/auth/login")
+async def admin_login(data: AdminLoginRequest):
+    """Admin login - returns JWT token"""
+    from app.auth import create_access_token, hash_password
+    import bcrypt
+
+    if data.email != ADMIN_CREDENTIALS["email"]:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Simple password check
+    if data.password != ADMIN_CREDENTIALS["password"]:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token(data={"sub": data.email, "user_id": 0, "user_type": "admin"})
+    return {
+        "success": True,
+        "message": "Admin login successful",
+        "data": {
+            "token": token,
+            "token_type": "bearer",
+            "user": {"email": data.email, "role": "admin"}
+        }
+    }
+
+@router.post("/auth/logout")
+async def admin_logout():
+    """Admin logout"""
+    return {"success": True, "message": "Logged out successfully"}
+
+
+# ============================================================
+# ADMIN POST JOB + PUSH NOTIFICATION
+# ============================================================
+
+class AdminJobCreate(BaseModel):
+    title: str
+    description: str
+    requirements: str = ""
+    responsibilities: str = ""
+    location: str = ""
+    salary_min: float = 0
+    salary_max: float = 0
+    job_type_id: int = 1
+    job_level_id: int = 1
+    category_id: int = 1
+    deadline: str = ""
+    vacancies: int = 1
+    send_notification: bool = True
+
+@router.post("/jobs/post")
+async def admin_post_job(data: AdminJobCreate, db: Session = Depends(get_db)):
+    """Admin posts a job and optionally sends push notification to all users"""
+    from app.models import JobCategory
+    from datetime import datetime as dt
+
+    # Get or create admin company
+    admin_company = db.query(Company).filter(Company.name == "Eagle's Pride Admin").first()
+    if not admin_company:
+        admin_company = Company(
+            name="Eagle's Pride Admin",
+            email="admin@eaglespride.com",
+            phone="00000000000",
+            is_active=True
+        )
+        db.add(admin_company)
+        db.commit()
+        db.refresh(admin_company)
+
+    # Parse deadline
+    deadline_date = None
+    if data.deadline:
+        try:
+            deadline_date = dt.strptime(data.deadline, "%Y-%m-%d").date()
+        except:
+            pass
+
+    job = Job(
+        company_id=admin_company.id,
+        title=data.title,
+        description=data.description,
+        requirements=data.requirements,
+        responsibilities=data.responsibilities,
+        location=data.location,
+        salary_min=data.salary_min,
+        salary_max=data.salary_max,
+        job_type_id=data.job_type_id,
+        job_level_id=data.job_level_id,
+        category_id=data.category_id,
+        deadline=deadline_date,
+        vacancies=data.vacancies,
+        is_active=True
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    push_sent = 0
+    if data.send_notification:
+        # Send FCM push notification to all job seekers
+        try:
+            from app.fcm_service import send_job_alert_to_all
+            push_sent = send_job_alert_to_all(db, data.title, "Eagle's Pride", job.id, data.location)
+        except Exception as e:
+            print(f"FCM error: {e}")
+
+        # Also create in-app notifications
+        try:
+            from app.notification_service import notify_new_job_posted
+            notify_new_job_posted(db, job.id)
+        except Exception as e:
+            print(f"In-app notification error: {e}")
+
+    return {
+        "success": True,
+        "message": f"Job posted successfully. Push notifications sent to {push_sent} devices.",
+        "data": {"job_id": job.id, "push_notifications_sent": push_sent}
+    }
+
+
+# ============================================================
+# BULK DELETE USERS
+# ============================================================
+
+@router.delete("/users/delete-all")
+async def delete_all_users(user_type: str = "all", db: Session = Depends(get_db)):
+    """Delete all users. user_type: 'all', 'job_seekers', or 'companies'"""
+    from app.models import JobSeeker, CompanyUser
+    deleted = 0
+
+    try:
+        if user_type in ("all", "job_seekers"):
+            count = db.query(JobSeeker).count()
+            db.query(JobSeeker).delete()
+            deleted += count
+
+        if user_type in ("all", "companies"):
+            count = db.query(CompanyUser).count()
+            db.query(CompanyUser).delete()
+            deleted += count
+
+        if user_type == "all":
+            count = db.query(User).count()
+            db.query(User).delete()
+            deleted += count
+
+        db.commit()
+        return {"success": True, "message": f"Deleted {deleted} users", "deleted_count": deleted}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/users/delete-bulk")
+async def delete_bulk_users(user_ids: list, db: Session = Depends(get_db)):
+    """Delete multiple users by ID list"""
+    from app.models import JobSeeker, CompanyUser
+    deleted = 0
+
+    try:
+        for uid in user_ids:
+            for model in [JobSeeker, CompanyUser, User]:
+                user = db.query(model).filter(model.id == uid).first()
+                if user:
+                    db.delete(user)
+                    deleted += 1
+                    break
+        db.commit()
+        return {"success": True, "message": f"Deleted {deleted} users", "deleted_count": deleted}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/jobs/delete-all")
+async def delete_all_jobs(db: Session = Depends(get_db)):
+    """Delete all job postings"""
+    try:
+        count = db.query(Job).count()
+        db.query(Job).delete()
+        db.commit()
+        return {"success": True, "message": f"Deleted {count} jobs", "deleted_count": count}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/notifications/send-push-all")
+async def send_push_to_all_users(
+    title: str,
+    message: str,
+    db: Session = Depends(get_db)
+):
+    """Send push notification to ALL users (job seekers + companies)"""
+    from app.models import JobSeeker, CompanyUser
+    from app.fcm_service import send_notification_to_multiple
+
+    tokens = []
+    for js in db.query(JobSeeker).filter(JobSeeker.fcm_token != None).all():
+        if js.fcm_token:
+            tokens.append(js.fcm_token)
+    for cu in db.query(CompanyUser).filter(CompanyUser.fcm_token != None).all():
+        if cu.fcm_token:
+            tokens.append(cu.fcm_token)
+
+    sent = send_notification_to_multiple(tokens, title, message, {"type": "admin_broadcast"})
+    return {"success": True, "message": f"Sent to {sent}/{len(tokens)} devices", "sent": sent, "total": len(tokens)}

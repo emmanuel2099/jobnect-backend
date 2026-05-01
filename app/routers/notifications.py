@@ -131,3 +131,56 @@ async def get_unread_count(
         "message": "Unread count retrieved",
         "data": {"unreadCount": count}
     }
+
+
+# FCM Token endpoints
+from pydantic import BaseModel
+
+class FCMTokenRequest(BaseModel):
+    fcm_token: str
+
+@router.post("/fcm-token")
+async def update_fcm_token(
+    request: FCMTokenRequest,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user's FCM token for push notifications."""
+    from app.models import JobSeeker, CompanyUser
+
+    if isinstance(current_user, JobSeeker) or (hasattr(current_user, 'user_type') and current_user.user_type == 'applicant'):
+        user = db.query(JobSeeker).filter(JobSeeker.id == current_user.id).first()
+    else:
+        user = db.query(CompanyUser).filter(CompanyUser.id == current_user.id).first()
+
+    if user:
+        user.fcm_token = request.fcm_token
+        db.commit()
+        return {"success": True, "message": "FCM token updated"}
+    return {"success": False, "message": "User not found"}
+
+
+@router.post("/send-test-notification")
+async def send_test_notification(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Send a test push notification to the current user."""
+    from app.models import JobSeeker, CompanyUser
+    from app.fcm_service import send_notification_to_token
+
+    if isinstance(current_user, JobSeeker) or (hasattr(current_user, 'user_type') and current_user.user_type == 'applicant'):
+        user = db.query(JobSeeker).filter(JobSeeker.id == current_user.id).first()
+    else:
+        user = db.query(CompanyUser).filter(CompanyUser.id == current_user.id).first()
+
+    if not user or not user.fcm_token:
+        raise HTTPException(status_code=400, detail="No FCM token found. Open the app first.")
+
+    success = send_notification_to_token(
+        user.fcm_token,
+        "Test Notification",
+        "Eagle's Pride push notifications are working!",
+        {"type": "test"}
+    )
+    return {"success": success, "message": "Notification sent" if success else "Failed to send"}

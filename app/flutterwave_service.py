@@ -10,10 +10,10 @@ class FlutterwaveService:
     """Service for handling Flutterwave payments"""
     
     def __init__(self):
-        self.secret_key = os.getenv("FLUTTERWAVE_SECRET_KEY", "")
-        self.public_key = os.getenv("FLUTTERWAVE_PUBLIC_KEY", "")
+        self.secret_key = os.getenv("FLUTTERWAVE_SECRET_KEY", "FLWSECK-f85cc6b5549a25f650594873b264a445-19de5373a8bvt-X").strip()
+        self.public_key = os.getenv("FLUTTERWAVE_PUBLIC_KEY", "FLWPUBK-aadd64c0ee68f34f45e180602733d9db-X").strip()
         self.base_url = "https://api.flutterwave.com/v3"
-        self.encryption_key = os.getenv("FLUTTERWAVE_ENCRYPTION_KEY", "")
+        self.encryption_key = os.getenv("FLUTTERWAVE_ENCRYPTION_KEY", "f85cc6b5549a68c339483599").strip()
     
     def initialize_payment(
         self,
@@ -64,9 +64,9 @@ class FlutterwaveService:
                 "name": name
             },
             "customizations": {
-                "title": "JobNect Subscription",
-                "description": "Subscription payment for JobNect",
-                "logo": "https://your-logo-url.com/logo.png"
+                "title": "Eagle's Pride",
+                "description": "Subscription payment for Eagle's Pride",
+                "logo": "https://jobnect-backend.onrender.com/static/logo.png"
             }
         }
         

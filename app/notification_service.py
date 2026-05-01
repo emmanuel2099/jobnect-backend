@@ -107,6 +107,16 @@ def notify_new_job_posted(db: Session, job_id: int):
                 related_id=job_id
             )
 
+        # Send FCM push notifications to all job seekers
+        try:
+            from app.fcm_service import send_job_alert_to_all
+            company_name = job.company.name if job.company else "a company"
+            location = job.location or ""
+            sent = send_job_alert_to_all(db, job.title, company_name, job_id, location)
+            print(f"   📱 FCM push notifications sent to {sent} devices")
+        except Exception as e:
+            print(f"   ⚠️  FCM push notification failed: {e}")
+
 
 def notify_interview_scheduled(db: Session, application_id: int, interview_date: str):
     """Notify applicant when interview is scheduled"""

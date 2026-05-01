@@ -305,55 +305,130 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/password-reset-email-verification")
 async def send_password_reset_otp(data: dict, db: Session = Depends(get_db)):
-    """Send password reset OTP"""
+    """Send password reset OTP via email"""
     email = data.get("email")
-    
-    user = db.query(User).filter(User.email == email).first()
+    if not email:
+        return {"success": False, "message": "Email is required", "data": {}}
+
+    # Check all user tables
+    from app.models import JobSeeker, CompanyUser
+    user = (
+        db.query(JobSeeker).filter(JobSeeker.email == email).first()
+        or db.query(CompanyUser).filter(CompanyUser.email == email).first()
+        or db.query(User).filter(User.email == email).first()
+    )
+
     if not user:
-        return {
-            "success": False,
-            "message": "Email not found",
-            "data": {}
-        }
-    
-    # Generate a simple OTP (in production, send via email)
+        return {"success": False, "message": "Email not found", "data": {}}
+
+    # Generate 6-digit OTP
     import random
+    from datetime import timedelta
     otp = str(random.randint(100000, 999999))
-    
-    # Store OTP in session or cache (simplified for now)
-    # In production, use Redis or database with expiry
-    
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    # Store OTP in email_otps table
+    try:
+        from sqlalchemy import text
+        # Delete any existing OTP for this email
+        db.execute(text("DELETE FROM email_otps WHERE email = :email"), {"email": email})
+        db.execute(
+            text("INSERT INTO email_otps (email, otp, expires_at, is_used) VALUES (:email, :otp, :expires_at, false)"),
+            {"email": email, "otp": otp, "expires_at": expires_at}
+        )
+        db.commit()
+    except Exception as e:
+        print(f"OTP storage error: {e}")
+        db.rollback()
+        return {"success": False, "message": "Failed to generate OTP", "data": {}}
+
+    # Send OTP via email
+    try:
+        from app.email_service import send_email
+        send_email(
+            to_email=email,
+            subject="Eagle's Pride - Password Reset OTP",
+            html_content=f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a73e8;">Password Reset Request</h2>
+                <p>Your OTP for password reset is:</p>
+                <h1 style="color: #1a73e8; font-size: 48px; letter-spacing: 8px;">{otp}</h1>
+                <p>This OTP expires in <strong>15 minutes</strong>.</p>
+                <p>If you did not request this, please ignore this email.</p>
+                <br>
+                <p>Eagle's Pride Team</p>
+            </div>
+            """
+        )
+    except Exception as e:
+        print(f"Email send error: {e}")
+        # Still return success — OTP is stored, user can try again
+
     return {
         "success": True,
-        "message": "OTP sent to email",
-        "data": {"otp": otp}  # Remove this in production
+        "message": "OTP sent to your email address",
+        "data": {}
     }
 
 @router.post("/reset-password")
 async def reset_password(data: dict, db: Session = Depends(get_db)):
-    """Reset password with OTP"""
+    """Reset password with verified OTP"""
     email = data.get("email")
     new_password = data.get("password")
     otp = data.get("otp")
-    
-    # In production, verify OTP here
-    
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        return {
-            "success": False,
-            "message": "User not found",
-            "data": {}
-        }
-    
-    user.password = hash_password(new_password)
+
+    if not all([email, new_password, otp]):
+        return {"success": False, "message": "Email, OTP and new password are required", "data": {}}
+
+    # Verify OTP from database
+    try:
+        from sqlalchemy import text
+        result = db.execute(
+            text("SELECT id, expires_at, is_used FROM email_otps WHERE email = :email AND otp = :otp"),
+            {"email": email, "otp": otp}
+        ).fetchone()
+
+        if not result:
+            return {"success": False, "message": "Invalid OTP", "data": {}}
+
+        otp_id, expires_at, is_used = result
+        if is_used:
+            return {"success": False, "message": "OTP already used", "data": {}}
+        if datetime.utcnow() > expires_at:
+            return {"success": False, "message": "OTP has expired", "data": {}}
+
+        # Mark OTP as used
+        db.execute(text("UPDATE email_otps SET is_used = true WHERE id = :id"), {"id": otp_id})
+        db.commit()
+    except Exception as e:
+        print(f"OTP verification error: {e}")
+        return {"success": False, "message": "OTP verification failed", "data": {}}
+
+    # Update password in all user tables
+    from app.models import JobSeeker, CompanyUser
+    hashed = hash_password(new_password)
+    updated = False
+
+    js = db.query(JobSeeker).filter(JobSeeker.email == email).first()
+    if js:
+        js.password = hashed
+        updated = True
+
+    cu = db.query(CompanyUser).filter(CompanyUser.email == email).first()
+    if cu:
+        cu.password = hashed
+        updated = True
+
+    u = db.query(User).filter(User.email == email).first()
+    if u:
+        u.password = hashed
+        updated = True
+
+    if not updated:
+        return {"success": False, "message": "User not found", "data": {}}
+
     db.commit()
-    
-    return {
-        "success": True,
-        "message": "Password reset successful",
-        "data": {}
-    }
+    return {"success": True, "message": "Password reset successful", "data": {}}
 
 @router.post("/change-password")
 async def change_password(

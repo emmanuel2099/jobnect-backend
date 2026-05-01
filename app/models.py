@@ -18,6 +18,7 @@ class JobSeeker(Base):
     is_deactivated = Column(Boolean, default=False)
     deactivated_at = Column(DateTime)
     last_login = Column(DateTime)
+    fcm_token = Column(String(500))  # Firebase Cloud Messaging token
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -48,6 +49,7 @@ class CompanyUser(Base):
     is_deactivated = Column(Boolean, default=False)
     deactivated_at = Column(DateTime)
     last_login = Column(DateTime)
+    fcm_token = Column(String(500))  # Firebase Cloud Messaging token
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
