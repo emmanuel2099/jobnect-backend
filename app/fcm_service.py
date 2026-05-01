@@ -18,9 +18,17 @@ SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "..", "firebase-s
 
 def _get_access_token() -> str:
     """Get OAuth2 access token from service account credentials."""
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
+    # Try env variable first (for production), then fall back to file
+    sa_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if sa_json:
+        import json
+        from google.oauth2.service_account import Credentials
+        info = json.loads(sa_json)
+        credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+    else:
+        credentials = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES
+        )
     credentials.refresh(Request())
     return credentials.token
 
