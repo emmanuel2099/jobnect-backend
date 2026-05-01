@@ -347,9 +347,15 @@ def initiate_payment(
         
         print(f"🔵 User details: {user_email}, {user_phone}, {user_name}")
         
+        # Determine if user is job seeker or company
+        from app.models import JobSeeker, CompanyUser
+        is_company = isinstance(current_user, CompanyUser) or (hasattr(current_user, 'user_type') and current_user.user_type == "company")
+
         # Create pending payment record first (verification relies on this record).
         payment = Payment(
-            user_id=current_user.id,
+            user_id=None,  # Not used - we use job_seeker_id or company_user_id
+            job_seeker_id=None if is_company else current_user.id,
+            company_user_id=current_user.id if is_company else None,
             subscription_id=None,
             amount=amount,
             currency="NGN",
@@ -421,11 +427,20 @@ def verify_payment(
 ):
     """Verify payment with FundsVera and activate subscription."""
     
-    # Find payment record
-    payment = db.query(Payment).filter(
-        Payment.transaction_reference == request.transaction_reference,
-        Payment.user_id == current_user.id
-    ).first()
+    # Find payment record - check both job_seeker_id and company_user_id
+    from app.models import JobSeeker, CompanyUser
+    is_company = isinstance(current_user, CompanyUser) or (hasattr(current_user, 'user_type') and current_user.user_type == "company")
+    
+    if is_company:
+        payment = db.query(Payment).filter(
+            Payment.transaction_reference == request.transaction_reference,
+            Payment.company_user_id == current_user.id
+        ).first()
+    else:
+        payment = db.query(Payment).filter(
+            Payment.transaction_reference == request.transaction_reference,
+            Payment.job_seeker_id == current_user.id
+        ).first()
     
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
