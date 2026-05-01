@@ -11,9 +11,9 @@ class FundsVeraService:
     """Service for handling FundsVera payments."""
 
     def __init__(self):
-        self.public_key = os.getenv("FUNDSVERA_PUBLIC_KEY", "")
-        self.secret_key = os.getenv("FUNDSVERA_SECRET_KEY", "")
-        self.base_url = os.getenv("FUNDSVERA_BASE_URL", "https://fundsvera.co/api/v1").rstrip("/")
+        self.public_key = os.getenv("FUNDSVERA_PUBLIC_KEY", "").strip()
+        self.secret_key = os.getenv("FUNDSVERA_SECRET_KEY", "").strip()
+        self.base_url = os.getenv("FUNDSVERA_BASE_URL", "https://fundsvera.co/api/v1").strip().rstrip("/")
         self.timeout_seconds = 30
 
     def _headers(self) -> Dict[str, str]:
