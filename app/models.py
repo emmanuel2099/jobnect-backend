@@ -629,3 +629,15 @@ class Feedback(Base):
     # job_seeker = relationship("User", foreign_keys=[job_seeker_id])
     # company = relationship("Company")
     # job = relationship("Job")
+
+
+class Admin(Base):
+    __tablename__ = "admins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime)

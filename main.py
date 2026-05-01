@@ -312,6 +312,31 @@ async def lifespan(app: FastAPI):
                 print(f"⚠️  Warning: Could not add FCM token columns: {e}")
                 db.rollback()
 
+            # Create admins table if not exists
+            try:
+                db2 = SessionLocal()
+                try:
+                    db2.execute(text("""
+                        CREATE TABLE IF NOT EXISTS admins (
+                            id SERIAL PRIMARY KEY,
+                            name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) UNIQUE NOT NULL,
+                            password VARCHAR(255) NOT NULL,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            last_login TIMESTAMP
+                        );
+                    """))
+                    db2.commit()
+                    print("✅ admins table ready")
+                except Exception as e:
+                    print(f"⚠️  admins table: {e}")
+                    db2.rollback()
+                finally:
+                    db2.close()
+            except Exception as e:
+                print(f"⚠️  Could not create admins table: {e}")
+
             # Fix notifications table - add job_seeker_id and company_user_id columns
             try:
                 print("\n🔄 Checking notifications table...")

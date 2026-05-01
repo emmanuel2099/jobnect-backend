@@ -1,16 +1,105 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, text
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from pydantic import BaseModel
+import os
 
 from app.database import get_db
-from app.models import User, Job, Company, JobApplication, Notification, JobType, JobLevel
+from app.models import User, Job, Company, JobApplication, Notification, JobType, JobLevel, Admin
+from app.auth import create_access_token, hash_password, verify_password
+from app.config import settings
 
 router = APIRouter()
 
-# Schemas for admin operations
+# ── Admin Auth Schemas ──────────────────────────────────────────────────────
+class AdminSignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    signup_code: str  # secret code to prevent random signups
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+# Secret signup code — set via env var, fallback default
+ADMIN_SIGNUP_CODE = os.getenv("ADMIN_SIGNUP_CODE", "EaglesPride@Admin2025")
+
+# ── Admin Signup ────────────────────────────────────────────────────────────
+@router.post("/signup")
+async def admin_signup(request: AdminSignupRequest, db: Session = Depends(get_db)):
+    """Register a new admin account (requires signup code)"""
+    if request.signup_code != ADMIN_SIGNUP_CODE:
+        raise HTTPException(status_code=403, detail="Invalid signup code")
+
+    existing = db.query(Admin).filter(Admin.email == request.email).first()
+    if existing:
+        return {"success": False, "message": "Email already registered as admin"}
+
+    new_admin = Admin(
+        name=request.name,
+        email=request.email,
+        password=hash_password(request.password),
+        is_active=True,
+    )
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+
+    token = create_access_token(
+        data={"sub": new_admin.email, "user_id": new_admin.id, "user_type": "admin"},
+        expires_delta=timedelta(hours=12)
+    )
+    return {
+        "success": True,
+        "message": "Admin account created successfully",
+        "data": {"token": token, "name": new_admin.name, "email": new_admin.email}
+    }
+
+# ── Admin Login ─────────────────────────────────────────────────────────────
+@router.post("/login")
+async def admin_login(request: AdminLoginRequest, db: Session = Depends(get_db)):
+    """Admin login"""
+    admin = db.query(Admin).filter(Admin.email == request.email).first()
+    if not admin or not verify_password(request.password, admin.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not admin.is_active:
+        raise HTTPException(status_code=403, detail="Admin account is deactivated")
+
+    admin.last_login = datetime.utcnow()
+    db.commit()
+
+    token = create_access_token(
+        data={"sub": admin.email, "user_id": admin.id, "user_type": "admin"},
+        expires_delta=timedelta(hours=12)
+    )
+    return {
+        "success": True,
+        "message": "Login successful",
+        "data": {"token": token, "name": admin.name, "email": admin.email}
+    }
+
+# ── Token Verify ─────────────────────────────────────────────────────────────
+@router.get("/verify-token")
+async def verify_admin_token(request: Request):
+    """Verify admin token is valid"""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+
+    from jose import JWTError, jwt
+    try:
+        token = auth.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("user_type") != "admin":
+            raise HTTPException(status_code=403, detail="Not an admin token")
+        return {"success": True, "message": "Token valid", "name": payload.get("sub")}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+# ── Other Admin Schemas ──────────────────────────────────────────────────────
 class SendNotificationRequest(BaseModel):
     user_id: Optional[int] = None
     user_type: Optional[str] = None  # "applicant", "company", or "all"
