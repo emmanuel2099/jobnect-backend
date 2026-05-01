@@ -45,21 +45,42 @@ def notify_new_message(db: Session, sender_id: int, receiver_id: int, message_te
 
 def notify_job_application(db: Session, job_id: int, applicant_id: int):
     """Notify company when someone applies for their job"""
+    from app.models import JobSeeker, CompanyUser
+
     job = db.query(Job).filter(Job.id == job_id).first()
-    applicant = db.query(User).filter(User.id == applicant_id).first()
-    
-    if job and applicant and job.company:
-        # Notify the company owner
-        company_owner = db.query(User).filter(User.company == job.company.name).first()
-        if company_owner:
-            create_notification(
-                db=db,
-                user_id=company_owner.id,
-                title="New Job Application",
-                message=f"{applicant.name} applied for {job.title}",
-                notification_type="application",
-                related_id=job_id
-            )
+    if not job or not job.company:
+        return
+
+    # Get applicant name
+    applicant_name = "A job seeker"
+    applicant = (
+        db.query(JobSeeker).filter(JobSeeker.id == applicant_id).first()
+        or db.query(User).filter(User.id == applicant_id).first()
+    )
+    if applicant:
+        applicant_name = applicant.name
+
+    # Find the company user who owns this job
+    company_user = None
+    if job.company.company_user_id:
+        company_user = db.query(CompanyUser).filter(
+            CompanyUser.id == job.company.company_user_id
+        ).first()
+    if not company_user and job.company.email:
+        company_user = db.query(CompanyUser).filter(
+            CompanyUser.email == job.company.email
+        ).first()
+
+    if company_user:
+        # Store in-app notification using company_user.id
+        create_notification(
+            db=db,
+            user_id=company_user.id,
+            title="New Job Application",
+            message=f"{applicant_name} applied for {job.title}",
+            notification_type="application",
+            related_id=job_id
+        )
 
 
 def notify_application_status_change(db: Session, application_id: int, status: str):

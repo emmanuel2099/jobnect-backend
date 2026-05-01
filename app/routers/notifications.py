@@ -15,12 +15,16 @@ async def get_notifications(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get user notifications"""
-    
+    """Get user notifications - works for job seekers, companies, and legacy users"""
+    from app.models import JobSeeker, CompanyUser
+
+    # Determine the correct user_id to query
+    user_id = current_user.id
+
     notifications = db.query(Notification).filter(
-        Notification.user_id == current_user.id
+        Notification.user_id == user_id
     ).order_by(desc(Notification.created_at)).limit(50).all()
-    
+
     notifications_data = [{
         "id": notif.id,
         "title": notif.title,
@@ -29,7 +33,7 @@ async def get_notifications(
         "isRead": notif.is_read,
         "createdAt": notif.created_at.isoformat() if notif.created_at else None
     } for notif in notifications]
-    
+
     return {
         "success": True,
         "message": "Notifications retrieved",

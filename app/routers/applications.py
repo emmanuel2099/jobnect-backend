@@ -78,9 +78,45 @@ async def apply_for_job(data: JobApplicationCreate, current_user: User = Depends
         # Send notification to company
         try:
             notify_job_application(db, data.job_id, current_user.id)
-            print(f"📬 Notification sent to company")
+            print(f"📬 In-app notification sent to company")
         except Exception as notif_error:
-            print(f"⚠️  Failed to send notification: {notif_error}")
+            print(f"⚠️  Failed to send in-app notification: {notif_error}")
+
+        # Send FCM push notification to the company that owns this job
+        try:
+            from app.models import CompanyUser
+            from app.fcm_service import send_notification_to_token
+
+            # Get the company user who owns this job
+            company = db.query(Company).filter(Company.id == job.company_id).first()
+            if company:
+                # Find the company user by company
+                company_user = db.query(CompanyUser).filter(
+                    CompanyUser.id == company.company_user_id
+                ).first()
+                if not company_user:
+                    # Try finding by email match
+                    company_user = db.query(CompanyUser).filter(
+                        CompanyUser.email == company.email
+                    ).first()
+
+                if company_user and company_user.fcm_token:
+                    applicant_name = getattr(current_user, 'name', 'A job seeker')
+                    send_notification_to_token(
+                        company_user.fcm_token,
+                        "New Job Application!",
+                        f"{applicant_name} applied for {job.title}",
+                        {
+                            "type": "new_application",
+                            "job_id": str(job.id),
+                            "application_id": str(application.id)
+                        }
+                    )
+                    print(f"📱 FCM push notification sent to company user {company_user.id}")
+                else:
+                    print(f"⚠️  Company user has no FCM token")
+        except Exception as fcm_error:
+            print(f"⚠️  FCM notification failed: {fcm_error}")
         
         return {
             "success": True,
