@@ -311,6 +311,36 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"⚠️  Warning: Could not add FCM token columns: {e}")
                 db.rollback()
+
+            # Fix email_otps table - ensure is_used column exists
+            try:
+                print("\n🔄 Checking email_otps table...")
+                # Create table if not exists
+                db.execute(text("""
+                    CREATE TABLE IF NOT EXISTS email_otps (
+                        id SERIAL PRIMARY KEY,
+                        email VARCHAR(255) NOT NULL,
+                        otp VARCHAR(10) NOT NULL,
+                        expires_at TIMESTAMP NOT NULL,
+                        is_used BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    );
+                """))
+                db.commit()
+                # Add is_used column if missing
+                result = db.execute(text("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_name='email_otps' AND column_name='is_used';
+                """))
+                if not result.fetchone():
+                    db.execute(text("ALTER TABLE email_otps ADD COLUMN is_used BOOLEAN DEFAULT FALSE;"))
+                    db.commit()
+                    print("✅ is_used column added to email_otps")
+                else:
+                    print("✅ email_otps table OK")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not fix email_otps table: {e}")
+                db.rollback()
             finally:
                 db.close()
             
