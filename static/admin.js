@@ -32,6 +32,12 @@ function showSection(sectionName) {
         case 'jobs':
             loadJobs();
             break;
+        case 'post-job':
+            loadPostJobCategories();
+            break;
+        case 'danger-zone':
+            // nothing to load
+            break;
         case 'applications':
             loadApplications();
             break;
@@ -189,8 +195,12 @@ async function loadJobs() {
     const container = document.getElementById('jobsTable');
     container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading jobs...</p></div>';
     
+    const token = localStorage.getItem('eaglesAdminToken');
     try {
-        const response = await fetch(`${API}/jobs/recent?limit=50`);
+        // Use admin endpoint to get ALL jobs (active + inactive)
+        const response = await fetch(`${API}/admin/all-jobs`, {
+            headers: {'Authorization': 'Bearer ' + token}
+        });
         const data = await response.json();
         
         if (data.success && data.data.jobs && data.data.jobs.length > 0) {
@@ -211,11 +221,10 @@ async function loadJobs() {
                         </thead>
                         <tbody>
                             ${data.data.jobs.map(job => {
-                                const isActive = job.isActive !== undefined ? job.isActive : job.is_active;
-                                const createdAt = job.createdAt || job.created_at;
+                                const isActive = job.is_active === true || job.is_active === 1;
                                 let dateStr = 'N/A';
-                                if (createdAt) {
-                                    try { dateStr = new Date(createdAt).toLocaleDateString(); } catch(e) {}
+                                if (job.created_at) {
+                                    try { dateStr = new Date(job.created_at).toLocaleDateString('en-GB'); } catch(e) {}
                                 }
                                 return `
                                 <tr>
@@ -223,8 +232,8 @@ async function loadJobs() {
                                     <td><strong>${job.title}</strong></td>
                                     <td>${job.company?.name || 'N/A'}</td>
                                     <td>${job.location || 'N/A'}</td>
-                                    <td>${job.jobType?.name || job.job_type || 'N/A'}</td>
-                                    <td><span class="badge bg-${isActive ? 'success' : 'danger'}">${isActive ? 'Active' : 'Closed'}</span></td>
+                                    <td>${job.job_type?.name || 'N/A'}</td>
+                                    <td><span class="badge bg-${isActive ? 'success' : 'secondary'}">${isActive ? 'Active' : 'Inactive'}</span></td>
                                     <td>${dateStr}</td>
                                     <td>
                                         <button class="btn btn-sm btn-warning" onclick="toggleJobStatus(${job.id})" title="Toggle Status">
@@ -1231,17 +1240,13 @@ function getPaymentStatusIcon(status) {
 
 // ── Post Job ──────────────────────────────────────────────────────────────
 
-async function openPostJobModal() {
-    document.getElementById('postJobModal').style.display = 'block';
-    document.getElementById('postJobError').style.display = 'none';
-    document.getElementById('postJobSuccess').style.display = 'none';
-
+async function loadPostJobCategories() {
     // Load categories into dropdown
     try {
         const res = await fetch(`${API}/categories`);
         const data = await res.json();
         const sel = document.getElementById('pj_category');
-        sel.innerHTML = '<option value="">Select category</option>';
+        sel.innerHTML = '<option value="">Select category (optional)</option>';
         const cats = data.data?.categories || data.data || [];
         cats.forEach(c => {
             const opt = document.createElement('option');
@@ -1252,9 +1257,8 @@ async function openPostJobModal() {
     } catch (e) { /* categories optional */ }
 }
 
-function closePostJobModal() {
-    document.getElementById('postJobModal').style.display = 'none';
-}
+// Keep backward compat
+async function openPostJobModal() { loadPostJobCategories(); }
 
 async function submitPostJob() {
     const title = document.getElementById('pj_title').value.trim();
@@ -1317,8 +1321,8 @@ async function submitPostJob() {
                 document.getElementById(id).value = '';
             });
             document.getElementById('pj_vacancies').value = '1';
-            // Reload jobs list after 1.5s
-            setTimeout(() => { closePostJobModal(); loadJobs(); }, 1500);
+            // Navigate to jobs list after 1.5s
+            setTimeout(() => { showSection('jobs'); loadJobs(); }, 1500);
         } else {
             errEl.textContent = data.detail || data.message || 'Failed to post job.';
             errEl.style.display = 'block';

@@ -20,6 +20,10 @@ class AdminSignupRequest(BaseModel):
     password: str
     signup_code: str  # secret code — first admin sets it, subsequent admins must match it
 
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
 # ── Admin Signup ────────────────────────────────────────────────────────────
 @router.post("/signup")
 async def admin_signup(request: AdminSignupRequest, db: Session = Depends(get_db)):
@@ -241,7 +245,70 @@ async def signup_info(db: Session = Depends(get_db)):
     is_first = db.query(Admin).count() == 0
     return {"success": True, "is_first_admin": is_first}
 
-# ── Other Admin Schemas ──────────────────────────────────────────────────────
+# ── Admin Stats ───────────────────────────────────────────────────────────────
+@router.get("/stats")
+async def admin_stats(db: Session = Depends(get_db)):
+    """Get platform stats for admin dashboard"""
+    from app.models import JobSeeker, CompanyUser, JobApplication
+    try:
+        js_count = db.query(JobSeeker).count()
+        cu_count = db.query(CompanyUser).count()
+        total_users = js_count + cu_count
+        active_jobs = db.query(Job).filter(Job.is_active == True).count()
+        total_apps = db.query(JobApplication).count()
+        return {
+            "success": True,
+            "data": {
+                "total_users": total_users,
+                "job_seekers": js_count,
+                "companies": cu_count,
+                "active_jobs": active_jobs,
+                "total_applications": total_apps,
+            }
+        }
+    except Exception as e:
+        return {"success": False, "data": {}}
+
+# ── Is First Admin ─────────────────────────────────────────────────────────────
+@router.get("/is-first-admin")
+async def is_first_admin(db: Session = Depends(get_db)):
+    """Check if no admins exist yet (first signup)"""
+    count = db.query(Admin).count()
+    return {"is_first": count == 0}
+
+# ── Admin All Jobs (includes inactive) ────────────────────────────────────────
+@router.get("/all-jobs")
+async def admin_all_jobs(request: Request, db: Session = Depends(get_db)):
+    """Get ALL jobs for admin (active + inactive)"""
+    from jose import JWTError, jwt
+    from app.models import Company, JobCategory, JobType
+
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token")
+    try:
+        token = auth.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("user_type") != "admin":
+            raise HTTPException(status_code=403, detail="Admin only")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    jobs = db.query(Job).order_by(desc(Job.created_at)).limit(100).all()
+    jobs_data = []
+    for job in jobs:
+        company = db.query(Company).filter(Company.id == job.company_id).first()
+        job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
+        jobs_data.append({
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "is_active": job.is_active,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "company": {"name": company.name} if company else None,
+            "job_type": {"name": job_type.name} if job_type else None,
+        })
+    return {"success": True, "data": {"jobs": jobs_data}}
 class SendNotificationRequest(BaseModel):
     user_id: Optional[int] = None
     user_type: Optional[str] = None  # "applicant", "company", or "all"

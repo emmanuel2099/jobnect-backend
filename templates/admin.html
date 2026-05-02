@@ -419,6 +419,12 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('post-job'); return false;" style="color:#4caf50;">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span>Post New Job</span>
+                </a>
+            </div>
+            <div class="nav-item">
                 <a href="#" class="nav-link" onclick="showSection('post-job'); return false;" style="color:#ff6b35;">
                     <i class="bi bi-plus-circle-fill"></i>
                     <span>Post New Job</span>
@@ -1260,6 +1266,87 @@
         switchTab('login');
       }
 
+      // ── Intro Screen ──────────────────────────────────────────────
+      async function enterDashboard() {
+        document.getElementById('introScreen').style.display = 'none';
+        const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+        if (token) {
+          try {
+            const res = await fetch('/api/v10/admin/verify-token', {
+              headers: {'Authorization': 'Bearer ' + token}
+            });
+            if (res.ok) { const d = await res.json(); showDashboard(d.name); return; }
+            localStorage.removeItem(ADMIN_TOKEN_KEY);
+          } catch(e) {}
+        }
+        document.getElementById('loginOverlay').style.display = 'flex';
+      }
+
+      // Load intro stats
+      (async function loadIntroStats() {
+        try {
+          const r = await fetch('/api/v10/admin/stats');
+          if (r.ok) {
+            const d = await r.json();
+            const s = d.data || {};
+            document.getElementById('introUsers').textContent = (s.total_users || s.totalUsers || 0).toLocaleString();
+            document.getElementById('introJobs').textContent = (s.active_jobs || s.activeJobs || 0).toLocaleString();
+            document.getElementById('introApps').textContent = (s.total_applications || s.totalApplications || 0).toLocaleString();
+          }
+        } catch(e) {}
+      })();
+
+      // ── Signup code hint ──────────────────────────────────────────
+      document.getElementById('tabSignup').addEventListener('click', async function() {
+        const hint = document.getElementById('signupCodeHint');
+        try {
+          const r = await fetch('/api/v10/admin/is-first-admin');
+          if (r.ok) {
+            const d = await r.json();
+            hint.textContent = d.is_first
+              ? '🎉 You are the first admin! Choose any signup code — it will be saved for future admins.'
+              : '🔒 Enter the signup code set by the first admin.';
+          }
+        } catch(e) { hint.textContent = 'Enter the admin signup code.'; }
+      });
+
+      // ── Delete All Users ──────────────────────────────────────────
+      async function confirmDeleteAllUsers() {
+        const confirmed = confirm('⚠️ WARNING: This will permanently delete ALL job seekers and company accounts.\n\nThis cannot be undone. Are you absolutely sure?');
+        if (!confirmed) return;
+        const confirmed2 = confirm('Last chance — type OK to confirm deletion of ALL users.');
+        if (!confirmed2) return;
+
+        const btn = document.getElementById('deleteAllBtn');
+        const res = document.getElementById('deleteAllResult');
+        btn.textContent = 'Deleting...';
+        btn.disabled = true;
+        res.style.display = 'none';
+
+        const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+        try {
+          const r = await fetch('/api/v10/admin/delete-all-users', {
+            method: 'DELETE',
+            headers: {'Authorization': 'Bearer ' + token}
+          });
+          const d = await r.json();
+          res.style.display = 'block';
+          if (r.ok && d.success) {
+            res.style.background = '#f0fff4'; res.style.color = '#1b5e20'; res.style.border = '1px solid #b2dfdb';
+            res.textContent = d.message;
+          } else {
+            res.style.background = '#fff0f0'; res.style.color = '#c0392b'; res.style.border = '1px solid #ffcccc';
+            res.textContent = d.detail || d.message || 'Delete failed.';
+          }
+        } catch(e) {
+          res.style.display = 'block'; res.style.background = '#fff0f0'; res.style.color = '#c0392b';
+          res.textContent = 'Connection error.';
+        } finally {
+          btn.textContent = 'Delete All Users';
+          btn.disabled = false;
+        }
+      }
+
       // Check if already logged in on page load
       (async function checkAuth() {
         const token = localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -1270,11 +1357,13 @@
           });
           if (res.ok) {
             const data = await res.json();
+            // Skip intro if already logged in
+            document.getElementById('introScreen').style.display = 'none';
             showDashboard(data.name);
           } else {
             localStorage.removeItem(ADMIN_TOKEN_KEY);
           }
-        } catch (e) { /* network error — show login */ }
+        } catch (e) { /* network error — show intro */ }
       })();
     </script>
 </body>
