@@ -280,35 +280,46 @@ async def is_first_admin(db: Session = Depends(get_db)):
 @router.get("/all-jobs")
 async def admin_all_jobs(request: Request, db: Session = Depends(get_db)):
     """Get ALL jobs for admin (active + inactive)"""
-    from jose import JWTError, jwt
-    from app.models import Company, JobCategory, JobType
+    from app.models import Company, JobType
 
+    # Verify admin token (but don't fail hard - return empty if no token)
     auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    if auth.startswith("Bearer "):
+        try:
+            from jose import JWTError, jwt
+            token = auth.split(" ")[1]
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            if payload.get("user_type") != "admin":
+                raise HTTPException(status_code=403, detail="Admin only")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    else:
         raise HTTPException(status_code=401, detail="No token")
-    try:
-        token = auth.split(" ")[1]
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        if payload.get("user_type") != "admin":
-            raise HTTPException(status_code=403, detail="Admin only")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
-    jobs = db.query(Job).order_by(desc(Job.created_at)).limit(100).all()
-    jobs_data = []
-    for job in jobs:
-        company = db.query(Company).filter(Company.id == job.company_id).first()
-        job_type = db.query(JobType).filter(JobType.id == job.job_type_id).first() if job.job_type_id else None
-        jobs_data.append({
-            "id": job.id,
-            "title": job.title,
-            "location": job.location,
-            "is_active": job.is_active,
-            "created_at": job.created_at.isoformat() if job.created_at else None,
-            "company": {"name": company.name} if company else None,
-            "job_type": {"name": job_type.name} if job_type else None,
-        })
-    return {"success": True, "data": {"jobs": jobs_data}}
+    try:
+        jobs = db.query(Job).order_by(desc(Job.created_at)).limit(200).all()
+        jobs_data = []
+        for job in jobs:
+            company_name = "N/A"
+            try:
+                company = db.query(Company).filter(Company.id == job.company_id).first()
+                if company:
+                    company_name = company.name
+            except Exception:
+                pass
+            
+            jobs_data.append({
+                "id": job.id,
+                "title": job.title,
+                "location": job.location or "",
+                "is_active": job.is_active,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "company_name": company_name,
+                "company": {"name": company_name},
+            })
+        return {"success": True, "data": jobs_data}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": []}
 class SendNotificationRequest(BaseModel):
     user_id: Optional[int] = None
     user_type: Optional[str] = None  # "applicant", "company", or "all"

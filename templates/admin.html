@@ -1275,16 +1275,33 @@
       c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
       try {
         const r=await fetch(API+'/admin/payments',{headers:authHeaders()});
-        if(!r.ok) throw new Error('Failed');
+        if(!r.ok) throw new Error('Failed: '+r.status);
         const d=await r.json();
-        const analytics=d.analytics||d.data||{};
-        const payments=d.payments||d.data||[];
-        // Update analytics cards
-        setEl('totalRevenue','₦'+(analytics.total_revenue||0).toLocaleString());
-        setEl('monthlyRevenue','₦'+(analytics.monthly_revenue||0).toLocaleString());
-        setEl('weeklyRevenue','₦'+(analytics.weekly_revenue||0).toLocaleString());
-        setEl('avgPayment','₦'+(analytics.average_payment||0).toLocaleString());
-        if(!Array.isArray(payments)||payments.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';return;}
+        // Handle both response structures
+        const summary = d.data?.summary || d.summary || d.data || {};
+        const payments = d.data?.payments || d.payments || [];
+        
+        // Update analytics cards - handle both camelCase and snake_case
+        setEl('totalRevenue','₦'+(summary.totalRevenue||summary.total_revenue||0).toLocaleString());
+        setEl('monthlyRevenue','₦'+(summary.monthlyRevenue||summary.monthly_revenue||0).toLocaleString());
+        setEl('weeklyRevenue','₦'+(summary.weeklyRevenue||summary.weekly_revenue||0).toLocaleString());
+        setEl('avgPayment','₦'+(summary.averagePayment||summary.average_payment||0).toLocaleString());
+        
+        // Update status counts
+        setEl('completedPayments', summary.completedPayments||summary.completed_payments||0);
+        setEl('pendingPayments', summary.pendingPayments||summary.pending_payments||0);
+        setEl('failedPayments', summary.failedPayments||summary.failed_payments||0);
+        
+        // Clear loading spinners for payment methods and revenue trend
+        var pmEl = document.getElementById('paymentMethodsContent');
+        if(pmEl) pmEl.innerHTML = '<p class="text-muted text-center py-3">No payment method data yet</p>';
+        var rtEl = document.getElementById('revenueTrendContent');
+        if(rtEl) rtEl.innerHTML = '<p class="text-muted text-center py-3">No revenue trend data yet</p>';
+        
+        if(!Array.isArray(payments)||payments.length===0){
+          c.innerHTML='<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';
+          return;
+        }
         var rows=payments.map(function(p){
           var sb='<span class="badge bg-'+(p.status==='completed'?'success':p.status==='failed'?'danger':'warning')+'">'+escHtml(p.status||'')+'</span>';
           var ca=p.created_at?new Date(p.created_at).toLocaleDateString('en-GB'):'N/A';
@@ -1408,7 +1425,55 @@
         var rate = s.verification_rate != null ? Math.round(s.verification_rate) : 
                    (s.total_users > 0 ? Math.round((s.verified_users/s.total_users)*100) : 0);
         setEl('verificationRate', rate+'%');
-      } catch(e){console.error('Email verification status error:',e);}
+        
+        // Populate verified users table
+        var verifiedList = d.data?.verified_users || [];
+        var vc = document.getElementById('verifiedUsersTable');
+        if(vc) {
+          if(!verifiedList.length) {
+            vc.innerHTML = '<div class="empty-state"><i class="bi bi-check-circle"></i><p>No verified users yet</p></div>';
+          } else {
+            var rows = verifiedList.map(function(u){
+              return '<tr><td>'+u.id+'</td><td>'+escHtml(u.name||'')+'</td><td>'+escHtml(u.email||'')+'</td><td>'+escHtml(u.user_type||'')+'</td><td><span class="badge bg-success">Verified</span></td></tr>';
+            }).join('');
+            vc.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+          }
+        }
+        
+        // Populate unverified users table
+        var unverifiedList = d.data?.unverified_users || [];
+        var uvc = document.getElementById('unverifiedUsersTable');
+        if(uvc) {
+          if(!unverifiedList.length) {
+            uvc.innerHTML = '<div class="empty-state"><i class="bi bi-x-circle"></i><p>All users are verified!</p></div>';
+          } else {
+            var rows2 = unverifiedList.map(function(u){
+              return '<tr><td>'+u.id+'</td><td>'+escHtml(u.name||'')+'</td><td>'+escHtml(u.email||'')+'</td><td>'+escHtml(u.user_type||'')+'</td><td><span class="badge bg-warning">Unverified</span></td>'+
+                '<td><button class="btn btn-sm btn-outline-primary" onclick="resendVerification('+u.id+')"><i class="bi bi-envelope-fill"></i> Resend</button></td></tr>';
+            }).join('');
+            uvc.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Type</th><th>Status</th><th>Action</th></tr></thead><tbody>'+rows2+'</tbody></table></div>';
+          }
+        }
+        
+        // Clear recent attempts loading
+        var atc = document.getElementById('recentAttemptsTable');
+        if(atc) atc.innerHTML = '<div class="empty-state"><i class="bi bi-clock-history"></i><p>No recent OTP attempts</p></div>';
+        
+      } catch(e){
+        console.error('Email verification status error:',e);
+        var vc2 = document.getElementById('verifiedUsersTable');
+        if(vc2) vc2.innerHTML = '<div class="alert alert-danger">Error loading data</div>';
+        var uvc2 = document.getElementById('unverifiedUsersTable');
+        if(uvc2) uvc2.innerHTML = '<div class="alert alert-danger">Error loading data</div>';
+      }
+    }
+    
+    async function resendVerification(userId) {
+      try {
+        const r = await fetch(API+'/admin/resend-verification/'+userId, {method:'POST', headers:authHeaders()});
+        const d = await r.json();
+        alert(d.message || (r.ok ? 'Verification email sent!' : 'Failed to send'));
+      } catch(e) { alert('Error: '+e.message); }
     }
     function refreshEmailVerification() { loadEmailVerificationStatus(); }
 
