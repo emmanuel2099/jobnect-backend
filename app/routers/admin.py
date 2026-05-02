@@ -651,27 +651,50 @@ async def delete_application(application_id: int, db: Session = Depends(get_db))
 @router.get("/applications")
 async def get_all_applications(db: Session = Depends(get_db)):
     """Get all job applications"""
-    applications = db.query(JobApplication).all()
-    
-    return {
-        "success": True,
-        "message": "Applications retrieved successfully",
-        "data": {
-            "applications": [
-                {
-                    "id": app.id,
-                    "userId": app.user_id,
-                    "userName": app.user.name if app.user else "N/A",
-                    "userEmail": app.user.email if app.user else "N/A",
-                    "jobId": app.job_id,
-                    "jobTitle": app.job.title if app.job else "N/A",
-                    "status": app.status,
-                    "createdAt": app.created_at.isoformat() if app.created_at else None
-                }
-                for app in applications
-            ]
-        }
-    }
+    try:
+        applications = db.query(JobApplication).order_by(desc(JobApplication.created_at)).limit(200).all()
+        
+        result = []
+        for app in applications:
+            # Get user info safely
+            user_name = "N/A"
+            user_email = "N/A"
+            job_title = "N/A"
+            company_name = "N/A"
+            
+            try:
+                if app.user_id:
+                    user = db.execute(text("SELECT name, email FROM users WHERE id = :uid"), {"uid": app.user_id}).fetchone()
+                    if user:
+                        user_name = user[0] or "N/A"
+                        user_email = user[1] or "N/A"
+            except Exception:
+                pass
+            
+            try:
+                if app.job_id:
+                    job = db.execute(text("SELECT j.title, c.name FROM jobs j LEFT JOIN companies c ON j.company_id = c.id WHERE j.id = :jid"), {"jid": app.job_id}).fetchone()
+                    if job:
+                        job_title = job[0] or "N/A"
+                        company_name = job[1] or "N/A"
+            except Exception:
+                pass
+            
+            result.append({
+                "id": app.id,
+                "user_id": app.user_id,
+                "applicant_name": user_name,
+                "email": user_email,
+                "job_id": app.job_id,
+                "job_title": job_title,
+                "company_name": company_name,
+                "status": app.status or "pending",
+                "created_at": app.created_at.isoformat() if app.created_at else None
+            })
+        
+        return {"success": True, "message": "Applications retrieved", "data": result}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": []}
 
 # Notification Management
 @router.post("/notifications/send")
@@ -730,27 +753,37 @@ async def send_notification(
 @router.get("/notifications")
 async def get_all_notifications(db: Session = Depends(get_db)):
     """Get all notifications (admin view)"""
-    notifications = db.query(Notification).order_by(desc(Notification.created_at)).limit(100).all()
-    
-    return {
-        "success": True,
-        "message": "Notifications retrieved",
-        "data": {
-            "notifications": [
-                {
-                    "id": notif.id,
-                    "userId": notif.user_id,
-                    "userName": notif.user.name if notif.user else "N/A",
-                    "title": notif.title,
-                    "message": notif.message,
-                    "type": notif.notification_type,
-                    "isRead": notif.is_read,
-                    "createdAt": notif.created_at.isoformat() if notif.created_at else None
-                }
-                for notif in notifications
-            ]
-        }
-    }
+    try:
+        notifications = db.query(Notification).order_by(desc(Notification.created_at)).limit(100).all()
+        
+        result = []
+        for notif in notifications:
+            user_name = "N/A"
+            user_email = "N/A"
+            try:
+                if notif.user_id:
+                    user = db.execute(text("SELECT name, email FROM users WHERE id = :uid"), {"uid": notif.user_id}).fetchone()
+                    if user:
+                        user_name = user[0] or "N/A"
+                        user_email = user[1] or "N/A"
+            except Exception:
+                pass
+            
+            result.append({
+                "id": notif.id,
+                "user_id": notif.user_id,
+                "user_name": user_name,
+                "email": user_email,
+                "title": notif.title,
+                "message": notif.message,
+                "type": notif.notification_type,
+                "is_read": notif.is_read,
+                "created_at": notif.created_at.isoformat() if notif.created_at else None
+            })
+        
+        return {"success": True, "message": "Notifications retrieved", "data": result}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": []}
 
 
 # Category Management
@@ -1020,30 +1053,49 @@ async def get_all_user_profiles(
 @router.get("/saved-jobs")
 async def get_all_saved_jobs(db: Session = Depends(get_db)):
     """Get all saved/bookmarked jobs across all users"""
-    from app.models import Bookmark
-    
-    bookmarks = db.query(Bookmark).order_by(desc(Bookmark.created_at)).all()
-    
-    return {
-        "success": True,
-        "message": f"Found {len(bookmarks)} saved jobs",
-        "data": {
-            "total": len(bookmarks),
-            "savedJobs": [
-                {
-                    "id": bookmark.id,
-                    "userId": bookmark.user_id,
-                    "userName": bookmark.user.name if bookmark.user else "N/A",
-                    "userEmail": bookmark.user.email if bookmark.user else "N/A",
-                    "jobId": bookmark.job_id,
-                    "jobTitle": bookmark.job.title if bookmark.job else "N/A",
-                    "companyName": bookmark.job.company.name if bookmark.job and bookmark.job.company else "N/A",
-                    "savedAt": bookmark.created_at.isoformat() if bookmark.created_at else None
-                }
-                for bookmark in bookmarks
-            ]
-        }
-    }
+    try:
+        from app.models import Bookmark
+        bookmarks = db.query(Bookmark).order_by(desc(Bookmark.created_at)).limit(200).all()
+        
+        result = []
+        for bookmark in bookmarks:
+            user_name = "N/A"
+            user_email = "N/A"
+            job_title = "N/A"
+            company_name = "N/A"
+            
+            try:
+                if bookmark.user_id:
+                    user = db.execute(text("SELECT name, email FROM users WHERE id = :uid"), {"uid": bookmark.user_id}).fetchone()
+                    if user:
+                        user_name = user[0] or "N/A"
+                        user_email = user[1] or "N/A"
+            except Exception:
+                pass
+            
+            try:
+                if bookmark.job_id:
+                    job = db.execute(text("SELECT j.title, c.name FROM jobs j LEFT JOIN companies c ON j.company_id = c.id WHERE j.id = :jid"), {"jid": bookmark.job_id}).fetchone()
+                    if job:
+                        job_title = job[0] or "N/A"
+                        company_name = job[1] or "N/A"
+            except Exception:
+                pass
+            
+            result.append({
+                "id": bookmark.id,
+                "user_id": bookmark.user_id,
+                "user_name": user_name,
+                "email": user_email,
+                "job_id": bookmark.job_id,
+                "job_title": job_title,
+                "company_name": company_name,
+                "created_at": bookmark.created_at.isoformat() if bookmark.created_at else None
+            })
+        
+        return {"success": True, "message": f"Found {len(result)} saved jobs", "data": result}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": []}
 
 @router.get("/chat/conversations")
 async def get_all_conversations(db: Session = Depends(get_db)):

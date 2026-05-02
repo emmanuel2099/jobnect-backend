@@ -1399,12 +1399,15 @@
       try {
         const r=await fetch(API+'/admin/email-verification-status',{headers:authHeaders()});
         if(!r.ok) throw new Error('Failed');
-        const d=await r.json(); const s=d.data||d||{};
-        setEl('totalUsersCount',s.total_users||0);
-        setEl('verifiedUsersCount',s.verified_users||0);
-        setEl('unverifiedUsersCount',s.unverified_users||0);
-        var rate=s.total_users>0?Math.round((s.verified_users/s.total_users)*100):0;
-        setEl('verificationRate',rate+'%');
+        const d=await r.json(); 
+        // Response has data.summary with the counts
+        const s=d.data?.summary || d.data || d || {};
+        setEl('totalUsersCount', s.total_users || 0);
+        setEl('verifiedUsersCount', s.verified_users || 0);
+        setEl('unverifiedUsersCount', s.unverified_users || 0);
+        var rate = s.verification_rate != null ? Math.round(s.verification_rate) : 
+                   (s.total_users > 0 ? Math.round((s.verified_users/s.total_users)*100) : 0);
+        setEl('verificationRate', rate+'%');
       } catch(e){console.error('Email verification status error:',e);}
     }
     function refreshEmailVerification() { loadEmailVerificationStatus(); }
