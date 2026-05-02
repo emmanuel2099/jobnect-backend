@@ -99,6 +99,89 @@ async def verify_admin_token(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
+# ── Admin Post Job ────────────────────────────────────────────────────────────
+class AdminPostJobRequest(BaseModel):
+    title: str
+    company_name: str
+    description: str
+    requirements: Optional[str] = None
+    responsibilities: Optional[str] = None
+    location: str
+    job_type: Optional[str] = None
+    salary_min: Optional[float] = None
+    salary_max: Optional[float] = None
+    currency: Optional[str] = "NGN"
+    vacancies: Optional[int] = 1
+    deadline: Optional[str] = None
+    experience_required: Optional[str] = None
+    category_id: Optional[int] = None
+
+@router.post("/post-job")
+async def admin_post_job(request: Request, job: AdminPostJobRequest, db: Session = Depends(get_db)):
+    """Admin posts a job — creates or reuses an admin company record"""
+    from jose import JWTError, jwt
+    from app.models import Company, Job, JobCategory
+
+    # Verify admin token
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+    try:
+        token = auth.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("user_type") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        admin_id = payload.get("user_id")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # Find or create a company record for this admin post
+    company = db.query(Company).filter(Company.name == job.company_name).first()
+    if not company:
+        company = Company(
+            name=job.company_name,
+            is_active=True,
+        )
+        db.add(company)
+        db.commit()
+        db.refresh(company)
+
+    # Resolve deadline
+    deadline = None
+    if job.deadline:
+        try:
+            from datetime import date
+            deadline = date.fromisoformat(job.deadline)
+        except Exception:
+            pass
+
+    new_job = Job(
+        title=job.title,
+        description=job.description,
+        requirements=job.requirements,
+        responsibilities=job.responsibilities,
+        location=job.location,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
+        currency=job.currency or "NGN",
+        vacancies=job.vacancies or 1,
+        deadline=deadline,
+        experience_required=job.experience_required,
+        category_id=job.category_id,
+        company_id=company.id,
+        is_active=True,
+        created_at=datetime.utcnow(),
+    )
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+
+    return {
+        "success": True,
+        "message": f"Job '{new_job.title}' posted successfully",
+        "data": {"job_id": new_job.id, "title": new_job.title, "company": company.name}
+    }
+
 # ── Other Admin Schemas ──────────────────────────────────────────────────────
 class SendNotificationRequest(BaseModel):
     user_id: Optional[int] = None

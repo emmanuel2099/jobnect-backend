@@ -1214,3 +1214,107 @@ function getPaymentStatusIcon(status) {
             return 'question-circle-fill';
     }
 }
+
+
+// ── Post Job ──────────────────────────────────────────────────────────────
+
+async function openPostJobModal() {
+    document.getElementById('postJobModal').style.display = 'block';
+    document.getElementById('postJobError').style.display = 'none';
+    document.getElementById('postJobSuccess').style.display = 'none';
+
+    // Load categories into dropdown
+    try {
+        const res = await fetch(`${API}/categories`);
+        const data = await res.json();
+        const sel = document.getElementById('pj_category');
+        sel.innerHTML = '<option value="">Select category</option>';
+        const cats = data.data?.categories || data.data || [];
+        cats.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+    } catch (e) { /* categories optional */ }
+}
+
+function closePostJobModal() {
+    document.getElementById('postJobModal').style.display = 'none';
+}
+
+async function submitPostJob() {
+    const title = document.getElementById('pj_title').value.trim();
+    const company = document.getElementById('pj_company').value.trim();
+    const description = document.getElementById('pj_description').value.trim();
+    const location = document.getElementById('pj_location').value.trim();
+
+    const errEl = document.getElementById('postJobError');
+    const sucEl = document.getElementById('postJobSuccess');
+    errEl.style.display = 'none';
+    sucEl.style.display = 'none';
+
+    if (!title || !company || !description || !location) {
+        errEl.textContent = 'Title, Company, Description and Location are required.';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('postJobBtn');
+    btn.textContent = 'Posting...';
+    btn.disabled = true;
+
+    const token = localStorage.getItem('eaglesAdminToken');
+
+    const payload = {
+        title,
+        company_name: company,
+        description,
+        requirements: document.getElementById('pj_requirements').value.trim() || null,
+        responsibilities: document.getElementById('pj_responsibilities').value.trim() || null,
+        location,
+        job_type: document.getElementById('pj_job_type').value || null,
+        salary_min: parseFloat(document.getElementById('pj_salary_min').value) || null,
+        salary_max: parseFloat(document.getElementById('pj_salary_max').value) || null,
+        currency: document.getElementById('pj_currency').value || 'NGN',
+        vacancies: parseInt(document.getElementById('pj_vacancies').value) || 1,
+        deadline: document.getElementById('pj_deadline').value || null,
+        experience_required: document.getElementById('pj_experience').value.trim() || null,
+        category_id: document.getElementById('pj_category').value || null,
+        is_admin_post: true,
+    };
+
+    try {
+        const res = await fetch(`${API}/admin/post-job`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            sucEl.textContent = `Job "${title}" posted successfully!`;
+            sucEl.style.display = 'block';
+            // Clear form
+            ['pj_title','pj_company','pj_description','pj_requirements','pj_responsibilities',
+             'pj_location','pj_salary_min','pj_salary_max','pj_experience','pj_deadline'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('pj_vacancies').value = '1';
+            // Reload jobs list after 1.5s
+            setTimeout(() => { closePostJobModal(); loadJobs(); }, 1500);
+        } else {
+            errEl.textContent = data.detail || data.message || 'Failed to post job.';
+            errEl.style.display = 'block';
+        }
+    } catch (e) {
+        errEl.textContent = 'Connection error. Please try again.';
+        errEl.style.display = 'block';
+    } finally {
+        btn.textContent = 'Post Job';
+        btn.disabled = false;
+    }
+}

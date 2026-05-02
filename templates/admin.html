@@ -616,6 +616,9 @@
         <div id="jobs" class="section">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Job Management</h2>
+                <button class="btn btn-primary" onclick="openPostJobModal()">
+                    <i class="bi bi-plus-circle me-1"></i> Post New Job
+                </button>
             </div>
             <div class="table-container">
                 <div id="jobsTable">
@@ -625,6 +628,96 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Post Job Modal -->
+        <div id="postJobModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.5);overflow-y:auto;">
+          <div style="background:#fff;border-radius:16px;max-width:680px;margin:40px auto;padding:32px;position:relative;">
+            <button onclick="closePostJobModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">&times;</button>
+            <h4 style="margin-bottom:24px;font-weight:700;"><i class="bi bi-briefcase-fill me-2" style="color:#ab3500;"></i>Post New Job</h4>
+            <div id="postJobError" style="display:none;background:#fff0f0;border:1px solid #ffcccc;color:#c0392b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
+            <div id="postJobSuccess" style="display:none;background:#f0fff4;border:1px solid #b2dfdb;color:#1b5e20;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Job Title *</label>
+                <input id="pj_title" type="text" class="form-control" placeholder="e.g. Software Engineer">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Company Name *</label>
+                <input id="pj_company" type="text" class="form-control" placeholder="e.g. Eagle's Pride Ltd">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Description *</label>
+                <textarea id="pj_description" class="form-control" rows="3" placeholder="Job description..."></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Requirements</label>
+                <textarea id="pj_requirements" class="form-control" rows="2" placeholder="Requirements..."></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Responsibilities</label>
+                <textarea id="pj_responsibilities" class="form-control" rows="2" placeholder="Responsibilities..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Location *</label>
+                <input id="pj_location" type="text" class="form-control" placeholder="e.g. Lagos, Nigeria">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Job Type</label>
+                <select id="pj_job_type" class="form-select">
+                  <option value="">Select type</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Remote">Remote</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Min Salary</label>
+                <input id="pj_salary_min" type="number" class="form-control" placeholder="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Max Salary</label>
+                <input id="pj_salary_max" type="number" class="form-control" placeholder="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Currency</label>
+                <select id="pj_currency" class="form-select">
+                  <option value="NGN">NGN</option>
+                  <option value="USD">USD</option>
+                  <option value="GBP">GBP</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Vacancies</label>
+                <input id="pj_vacancies" type="number" class="form-control" value="1" min="1">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Deadline</label>
+                <input id="pj_deadline" type="date" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Experience Required</label>
+                <input id="pj_experience" type="text" class="form-control" placeholder="e.g. 2+ years">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Category</label>
+                <select id="pj_category" class="form-select">
+                  <option value="">Select category</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+              <button onclick="submitPostJob()" id="postJobBtn" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-send me-1"></i> Post Job
+              </button>
+              <button onclick="closePostJobModal()" class="btn btn-outline-secondary">Cancel</button>
+            </div>
+          </div>
         </div>
         
         <!-- Applications Section -->
