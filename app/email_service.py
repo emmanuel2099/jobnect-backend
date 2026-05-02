@@ -320,24 +320,12 @@ The Eagle's Pride Team
             }
 
     def send_verification_email(self, email: str, name: str = "User") -> dict:
-        """Send email verification OTP - tries Resend API first, then Gmail SMTP"""
+        """Send email verification OTP via Gmail SMTP"""
         try:
             otp = self.generate_otp()
             self._store_otp(email, otp, purpose="email_verification")
             
-            # Try Resend API first (works on Render - HTTPS based)
-            if self.resend_api_key:
-                result = self._send_via_resend(email, name, otp, purpose="verification")
-                if result["success"]:
-                    return {
-                        "success": True,
-                        "message": "Verification email sent",
-                        "email": email,
-                        "email_sent": True,
-                        "service": "resend"
-                    }
-            
-            # Fallback: try Gmail SMTP
+            # Use Gmail SMTP as primary
             gmail_result = self._send_gmail_smtp(email, name, otp)
             if gmail_result.get("success"):
                 return {
@@ -348,14 +336,14 @@ The Eagle's Pride Team
                     "service": "gmail"
                 }
             
-            # Both failed — OTP is stored, return it so app can show it
-            print(f"[EMAIL FALLBACK] OTP for {email}: {otp} (email delivery failed)")
+            # Gmail failed — log and return OTP as fallback
+            print(f"[EMAIL FALLBACK] OTP for {email}: {otp} | Error: {gmail_result.get('message')}")
             return {
                 "success": True,
                 "message": "OTP generated. Email delivery failed — check spam or contact support.",
                 "email": email,
                 "email_sent": False,
-                "otp": otp  # Remove this in production once email is working
+                "debug_otp": otp  # Remove in production
             }
                 
         except Exception as e:
@@ -403,47 +391,29 @@ The Eagle's Pride Team
             }
     
     def send_password_reset_email(self, email: str, name: str = "User") -> dict:
-        """Send password reset OTP - tries Resend API first, then Gmail SMTP"""
+        """Send password reset OTP via Gmail SMTP"""
         try:
             otp = self.generate_otp()
             self._store_otp(email, otp, purpose="password_reset")
             
-            # Try Resend API first
-            if self.resend_api_key:
-                result = self._send_via_resend(
-                    email, name, otp,
-                    subject="🔐 Reset Your Eagle's Pride Password",
-                    purpose="reset"
-                )
-                if result["success"]:
-                    return {
-                        "success": True,
-                        "message": "Password reset email sent",
-                        "email": email,
-                        "email_sent": True
-                    }
+            # Use Gmail SMTP as primary
+            gmail_result = self._send_gmail_smtp_reset(email, name, otp)
+            if gmail_result.get("success"):
+                return {
+                    "success": True,
+                    "message": "Password reset email sent",
+                    "email": email,
+                    "email_sent": True
+                }
             
-            # Fallback: Gmail SMTP
-            try:
-                gmail_result = self._send_gmail_smtp_reset(email, name, otp)
-                if gmail_result.get("success"):
-                    return {
-                        "success": True,
-                        "message": "Password reset email sent",
-                        "email": email,
-                        "email_sent": True
-                    }
-            except Exception:
-                pass
-            
-            # Both failed
-            print(f"[EMAIL FALLBACK] Password reset OTP for {email}: {otp}")
+            # Gmail failed
+            print(f"[EMAIL FALLBACK] Password reset OTP for {email}: {otp} | Error: {gmail_result.get('message')}")
             return {
                 "success": True,
                 "message": "Reset code generated. Email delivery failed — check spam or contact support.",
                 "email": email,
                 "email_sent": False,
-                "otp": otp  # Remove once email is working
+                "debug_otp": otp  # Remove once email is working
             }
                 
         except Exception as e:
