@@ -395,79 +395,79 @@
         
         <nav class="nav-menu">
             <div class="nav-item">
-                <a href="#" class="nav-link active" onclick="showSection('dashboard'); return false;">
+                <a href="#" class="nav-link active" data-section="dashboard" onclick="showSection('dashboard'); return false;">
                     <i class="bi bi-speedometer2"></i>
                     <span>Dashboard</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('users'); return false;">
+                <a href="#" class="nav-link" data-section="users" onclick="showSection('users'); return false;">
                     <i class="bi bi-people-fill"></i>
                     <span>Users</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('email-verification'); return false;">
+                <a href="#" class="nav-link" data-section="email-verification" onclick="showSection('email-verification'); return false;">
                     <i class="bi bi-envelope-check-fill"></i>
                     <span>Email Verification</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('jobs'); return false;">
+                <a href="#" class="nav-link" data-section="jobs" onclick="showSection('jobs'); return false;">
                     <i class="bi bi-briefcase-fill"></i>
                     <span>Jobs</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('post-job'); return false;" style="color:#4caf50;">
+                <a href="#" class="nav-link" data-section="post-job" onclick="showSection('post-job'); return false;" style="color:#4caf50;">
                     <i class="bi bi-plus-circle-fill"></i>
                     <span>Post New Job</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('applications'); return false;">
+                <a href="#" class="nav-link" data-section="applications" onclick="showSection('applications'); return false;">
                     <i class="bi bi-file-earmark-text-fill"></i>
                     <span>Applications</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('payments'); return false;">
+                <a href="#" class="nav-link" data-section="payments" onclick="showSection('payments'); return false;">
                     <i class="bi bi-credit-card-fill"></i>
                     <span>Payments & Revenue</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('chat'); return false;">
+                <a href="#" class="nav-link" data-section="chat" onclick="showSection('chat'); return false;">
                     <i class="bi bi-chat-dots-fill"></i>
                     <span>Chat</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('categories'); return false;">
+                <a href="#" class="nav-link" data-section="categories" onclick="showSection('categories'); return false;">
                     <i class="bi bi-tags-fill"></i>
                     <span>Categories</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('saved'); return false;">
+                <a href="#" class="nav-link" data-section="saved" onclick="showSection('saved'); return false;">
                     <i class="bi bi-bookmark-fill"></i>
                     <span>Saved Jobs</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('profiles'); return false;">
+                <a href="#" class="nav-link" data-section="profiles" onclick="showSection('profiles'); return false;">
                     <i class="bi bi-person-badge-fill"></i>
                     <span>User Profiles</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('notifications'); return false;">
+                <a href="#" class="nav-link" data-section="notifications" onclick="showSection('notifications'); return false;">
                     <i class="bi bi-bell-fill"></i>
                     <span>Notifications</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('danger-zone'); return false;" style="color:#ff6b6b;">
+                <a href="#" class="nav-link" data-section="danger-zone" onclick="showSection('danger-zone'); return false;" style="color:#ff6b6b;">
                     <i class="bi bi-trash3-fill"></i>
                     <span>Delete All Users</span>
                 </a>
@@ -1122,8 +1122,322 @@
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Admin JS -->
-    <script src="/static/admin.js"></script>
+    <!-- Admin JS - inline fallback in case static file fails -->
+    <script>
+    // ─── Core Navigation (inline - always works) ──────────────────────────────
+    const API = '/api/v10';
+    const ADMIN_TOKEN_KEY = 'eaglesAdminToken';
+    let currentUserFilter = 'all';
+
+    function getToken() { return localStorage.getItem(ADMIN_TOKEN_KEY); }
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
+    }
+    function setEl(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; }
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showSection(name) {
+      document.querySelectorAll('.section').forEach(function(s){ s.style.display='none'; });
+      var t = document.getElementById(name);
+      if (t) t.style.display = 'block';
+      document.querySelectorAll('.nav-link').forEach(function(l){
+        l.classList.remove('active');
+        if (l.getAttribute('data-section') === name) l.classList.add('active');
+      });
+      switch(name) {
+        case 'dashboard': loadDashboardStats(); break;
+        case 'users': loadUsers(); break;
+        case 'email-verification': loadEmailVerificationStatus(); break;
+        case 'jobs': loadJobs(); break;
+        case 'post-job': loadPostJobCategories(); break;
+        case 'applications': loadApplications(); break;
+        case 'payments': loadPayments(); break;
+        case 'chat': loadChat(); break;
+        case 'categories': loadCategories(); break;
+        case 'saved': loadSavedJobs(); break;
+        case 'profiles': loadProfiles(); break;
+        case 'notifications': loadNotifications(); break;
+      }
+    }
+
+    async function loadDashboardStats() {
+      try {
+        const r = await fetch(API+'/admin/users/stats',{headers:authHeaders()});
+        if(r.ok){const d=await r.json();const s=d.data||d;
+          setEl('totalUsers',s.total_users||0);setEl('totalApplicants',s.total_applicants||0);
+          setEl('totalCompanies',s.total_companies||0);setEl('onlineUsers',s.online_users||0);}
+      } catch(e){}
+      try {
+        const r = await fetch(API+'/admin/stats',{headers:authHeaders()});
+        if(r.ok){const d=await r.json();const s=d.data||d;
+          setEl('totalJobs',s.active_jobs||0);setEl('totalApplications',s.total_applications||0);}
+      } catch(e){}
+      try {
+        const r = await fetch(API+'/admin/chat/conversations',{headers:authHeaders()});
+        if(r.ok){const d=await r.json();const c=d.data||d||[];setEl('totalConversations',Array.isArray(c)?c.length:0);}
+      } catch(e){}
+      try {
+        const r = await fetch(API+'/admin/payments',{headers:authHeaders()});
+        if(r.ok){const d=await r.json();const p=d.data||d||[];setEl('totalPayments',Array.isArray(p)?p.length:0);}
+      } catch(e){}
+    }
+
+    function filterUsers(type) { currentUserFilter=type; loadUsers(); }
+
+    async function loadUsers() {
+      var c=document.getElementById('usersTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        var url=API+'/admin/users'+(currentUserFilter&&currentUserFilter!=='all'?'?user_type='+currentUserFilter:'');
+        const r=await fetch(url,{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const users=d.data||d.users||d||[];
+        if(!Array.isArray(users)||users.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-people"></i><p>No users found</p></div>';return;}
+        var rows=users.map(function(u){
+          var tb=u.user_type==='company'?'<span class="badge bg-info">Company</span>':'<span class="badge bg-primary">Applicant</span>';
+          var sb=u.is_active?'<span class="badge bg-success">Active</span>':'<span class="badge bg-secondary">Inactive</span>';
+          var ll=u.last_login?new Date(u.last_login).toLocaleDateString('en-GB'):'Never';
+          return '<tr><td>'+u.id+'</td><td>'+escHtml(u.full_name||u.name||'')+'</td><td>'+escHtml(u.email||'')+'</td><td>'+escHtml(u.phone||'')+'</td><td>'+tb+'</td><td>'+sb+'</td><td>'+ll+'</td><td>'+
+            '<button class="btn btn-sm btn-outline-warning me-1" onclick="toggleUserStatus('+u.id+')"><i class="bi bi-toggle-on"></i></button>'+
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteUser('+u.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Type</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function deleteUser(id) {
+      if(!confirm('Delete this user? Cannot be undone.')) return;
+      try{const r=await fetch(API+'/admin/users/'+id,{method:'DELETE',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadUsers();}
+      catch(e){alert('Error: '+e.message);}
+    }
+    async function toggleUserStatus(id) {
+      try{const r=await fetch(API+'/admin/users/'+id+'/toggle-status',{method:'PATCH',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadUsers();}
+      catch(e){alert('Error: '+e.message);}
+    }
+
+    async function loadJobs() {
+      var c=document.getElementById('jobsTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/all-jobs',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const jobs=d.data||d.jobs||d||[];
+        if(!Array.isArray(jobs)||jobs.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-briefcase"></i><p>No jobs found</p></div>';return;}
+        var rows=jobs.map(function(j){
+          var sb=j.is_active?'<span class="badge bg-success">Active</span>':'<span class="badge bg-secondary">Inactive</span>';
+          var ca=j.created_at?new Date(j.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+j.id+'</td><td>'+escHtml(j.title||'')+'</td><td>'+escHtml(j.company_name||j.company||'')+'</td><td>'+escHtml(j.location||'')+'</td><td>'+sb+'</td><td>'+ca+'</td><td>'+
+            '<button class="btn btn-sm btn-outline-warning me-1" onclick="toggleJobStatus('+j.id+')"><i class="bi bi-toggle-on"></i></button>'+
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteJob('+j.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Title</th><th>Company</th><th>Location</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function deleteJob(id) {
+      if(!confirm('Delete this job?')) return;
+      try{const r=await fetch(API+'/admin/jobs/'+id,{method:'DELETE',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadJobs();}
+      catch(e){alert('Error: '+e.message);}
+    }
+    async function toggleJobStatus(id) {
+      try{const r=await fetch(API+'/admin/jobs/'+id+'/toggle-status',{method:'PATCH',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadJobs();}
+      catch(e){alert('Error: '+e.message);}
+    }
+
+    async function loadApplications() {
+      var c=document.getElementById('applicationsTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/applications',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const apps=d.data||d.applications||d||[];
+        if(!Array.isArray(apps)||apps.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-file-earmark-text"></i><p>No applications found</p></div>';return;}
+        var rows=apps.map(function(a){
+          var sb='<span class="badge bg-'+(a.status==='accepted'?'success':a.status==='rejected'?'danger':'warning')+'">'+escHtml(a.status||'pending')+'</span>';
+          var ca=a.created_at?new Date(a.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+a.id+'</td><td>'+escHtml(a.applicant_name||a.user_name||'')+'</td><td>'+escHtml(a.job_title||'')+'</td><td>'+escHtml(a.company_name||'')+'</td><td>'+sb+'</td><td>'+ca+'</td><td>'+
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteApplication('+a.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Applicant</th><th>Job</th><th>Company</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function deleteApplication(id) {
+      if(!confirm('Delete this application?')) return;
+      try{const r=await fetch(API+'/admin/applications/'+id,{method:'DELETE',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadApplications();}
+      catch(e){alert('Error: '+e.message);}
+    }
+
+    async function loadPayments() {
+      var c=document.getElementById('paymentsTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/payments',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json();
+        const analytics=d.analytics||d.data||{};
+        const payments=d.payments||d.data||[];
+        // Update analytics cards
+        setEl('totalRevenue','₦'+(analytics.total_revenue||0).toLocaleString());
+        setEl('monthlyRevenue','₦'+(analytics.monthly_revenue||0).toLocaleString());
+        setEl('weeklyRevenue','₦'+(analytics.weekly_revenue||0).toLocaleString());
+        setEl('avgPayment','₦'+(analytics.average_payment||0).toLocaleString());
+        if(!Array.isArray(payments)||payments.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';return;}
+        var rows=payments.map(function(p){
+          var sb='<span class="badge bg-'+(p.status==='completed'?'success':p.status==='failed'?'danger':'warning')+'">'+escHtml(p.status||'')+'</span>';
+          var ca=p.created_at?new Date(p.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+p.id+'</td><td>'+escHtml(p.user_name||p.email||'')+'</td><td>₦'+Number(p.amount||0).toLocaleString()+'</td><td>'+escHtml(p.plan_name||p.description||'')+'</td><td>'+sb+'</td><td>'+ca+'</td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Plan</th><th>Status</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+    function refreshPayments() { loadPayments(); }
+
+    async function loadChat() {
+      var c=document.getElementById('chatTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/chat/conversations',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const convs=d.data||d.conversations||d||[];
+        if(!Array.isArray(convs)||convs.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-chat-dots"></i><p>No conversations found</p></div>';return;}
+        var rows=convs.map(function(cv){
+          var ca=cv.created_at?new Date(cv.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+cv.id+'</td><td>'+escHtml(cv.participant1||cv.user1||'')+'</td><td>'+escHtml(cv.participant2||cv.user2||'')+'</td><td>'+(cv.message_count||0)+'</td><td>'+escHtml(cv.last_message||'')+'</td><td>'+ca+'</td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>User 1</th><th>User 2</th><th>Messages</th><th>Last Message</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function loadCategories() {
+      var c=document.getElementById('categoriesTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/categories',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const cats=(d.data&&d.data.categories)||d.categories||d||[];
+        if(!Array.isArray(cats)||cats.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-tags"></i><p>No categories found</p></div>';return;}
+        var rows=cats.map(function(cat){
+          return '<tr><td>'+cat.id+'</td><td>'+(cat.icon||'')+'</td><td>'+escHtml(cat.name||'')+'</td><td>'+(cat.job_count||0)+'</td><td>'+
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteCategory('+cat.id+')"><i class="bi bi-trash"></i></button></td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Icon</th><th>Name</th><th>Jobs</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function deleteCategory(id) {
+      if(!confirm('Delete this category?')) return;
+      try{const r=await fetch(API+'/admin/categories/'+id,{method:'DELETE',headers:authHeaders()});if(!r.ok)throw new Error('Failed');loadCategories();}
+      catch(e){alert('Error: '+e.message);}
+    }
+
+    async function loadSavedJobs() {
+      var c=document.getElementById('savedJobsTable')||document.getElementById('savedTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/saved-jobs',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const saved=d.data||d.saved_jobs||d||[];
+        if(!Array.isArray(saved)||saved.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-bookmark"></i><p>No saved jobs found</p></div>';return;}
+        var rows=saved.map(function(s){
+          var ca=s.created_at?new Date(s.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+s.id+'</td><td>'+escHtml(s.user_name||s.email||'')+'</td><td>'+escHtml(s.job_title||'')+'</td><td>'+escHtml(s.company_name||'')+'</td><td>'+ca+'</td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>User</th><th>Job</th><th>Company</th><th>Saved On</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function loadProfiles() {
+      var c=document.getElementById('profilesTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/users/profiles/all',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const profiles=d.data||d.profiles||d||[];
+        if(!Array.isArray(profiles)||profiles.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-person-badge"></i><p>No profiles found</p></div>';return;}
+        var rows=profiles.map(function(p){
+          return '<tr><td>'+p.id+'</td><td>'+escHtml(p.name||'')+'</td><td>'+escHtml(p.email||'')+'</td><td>'+escHtml(p.user_type||'')+'</td><td>'+escHtml(p.location||'')+'</td><td>'+(p.skills_count||0)+'</td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Type</th><th>Location</th><th>Skills</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function loadNotifications() {
+      var c=document.getElementById('notificationsTable'); if(!c) return;
+      c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      try {
+        const r=await fetch(API+'/admin/notifications',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const notifs=d.data||d.notifications||d||[];
+        if(!Array.isArray(notifs)||notifs.length===0){c.innerHTML='<div class="empty-state"><i class="bi bi-bell"></i><p>No notifications found</p></div>';return;}
+        var rows=notifs.map(function(n){
+          var ca=n.created_at?new Date(n.created_at).toLocaleDateString('en-GB'):'N/A';
+          return '<tr><td>'+n.id+'</td><td>'+escHtml(n.user_name||n.email||'All Users')+'</td><td>'+escHtml(n.title||'')+'</td><td>'+escHtml(n.message||'')+'</td><td>'+ca+'</td></tr>';
+        }).join('');
+        c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>Recipient</th><th>Title</th><th>Message</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+    }
+
+    async function sendNotification() {
+      var title=document.getElementById('notifTitle')?.value?.trim();
+      var message=document.getElementById('notifMessage')?.value?.trim();
+      var userId=document.getElementById('notifUserId')?.value?.trim();
+      if(!title||!message){alert('Please enter title and message.');return;}
+      try {
+        var payload={title,message};
+        if(userId) payload.user_id=parseInt(userId);
+        const r=await fetch(API+'/admin/notifications/send',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload)});
+        const d=await r.json();
+        if(r.ok&&d.success){alert('Notification sent!');loadNotifications();}
+        else alert('Error: '+(d.detail||d.message||'Failed'));
+      } catch(e){alert('Error: '+e.message);}
+    }
+
+    async function loadEmailVerificationStatus() {
+      try {
+        const r=await fetch(API+'/admin/email-verification-status',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const s=d.data||d||{};
+        setEl('totalUsersCount',s.total_users||0);
+        setEl('verifiedUsersCount',s.verified_users||0);
+        setEl('unverifiedUsersCount',s.unverified_users||0);
+        var rate=s.total_users>0?Math.round((s.verified_users/s.total_users)*100):0;
+        setEl('verificationRate',rate+'%');
+      } catch(e){console.error('Email verification status error:',e);}
+    }
+    function refreshEmailVerification() { loadEmailVerificationStatus(); }
+
+    async function loadPostJobCategories() {
+      try {
+        const r=await fetch(API+'/categories',{headers:authHeaders()});
+        if(!r.ok) throw new Error('Failed');
+        const d=await r.json(); const cats=(d.data&&d.data.categories)||d.categories||d||[];
+        var sel=document.getElementById('pj_category'); if(!sel) return;
+        sel.innerHTML='<option value="">Select Category</option>';
+        cats.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=(c.icon?c.icon+' ':'')+c.name;sel.appendChild(o);});
+      } catch(e){}
+    }
+
+    async function submitPostJob() {
+      var sEl=document.getElementById('postJobSuccess'),eEl=document.getElementById('postJobError');
+      if(sEl)sEl.style.display='none'; if(eEl)eEl.style.display='none';
+      function gv(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+      var payload={title:gv('pj_title'),company_name:gv('pj_company'),description:gv('pj_description'),
+        requirements:gv('pj_requirements'),responsibilities:gv('pj_responsibilities'),location:gv('pj_location'),
+        job_type:gv('pj_job_type'),salary_min:parseFloat(gv('pj_salary_min'))||null,salary_max:parseFloat(gv('pj_salary_max'))||null,
+        currency:gv('pj_currency')||'NGN',vacancies:parseInt(gv('pj_vacancies'))||1,deadline:gv('pj_deadline'),
+        experience_level:gv('pj_experience'),category_id:gv('pj_category')||null};
+      try {
+        const r=await fetch(API+'/admin/post-job',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload)});
+        const d=await r.json();
+        if(!r.ok) throw new Error(d.detail||d.message||'Failed');
+        if(sEl){sEl.textContent='Job posted successfully!';sEl.style.display='block';setTimeout(function(){sEl.style.display='none';},4000);}
+      } catch(e){if(eEl){eEl.textContent='Error: '+e.message;eEl.style.display='block';}}
+    }
+    </script>
+    <script src="/static/admin.js" onerror="console.log('Static admin.js not loaded, using inline version')"></script>
     </div><!-- end dashboardContent -->
 
     <script>
