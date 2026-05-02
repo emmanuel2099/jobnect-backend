@@ -380,17 +380,20 @@ async def lifespan(app: FastAPI):
                     );
                 """))
                 db.commit()
-                # Add is_used column if missing
-                result = db.execute(text("""
-                    SELECT column_name FROM information_schema.columns
-                    WHERE table_name='email_otps' AND column_name='is_used';
-                """))
-                if not result.fetchone():
-                    db.execute(text("ALTER TABLE email_otps ADD COLUMN is_used BOOLEAN DEFAULT FALSE;"))
-                    db.commit()
-                    print("✅ is_used column added to email_otps")
-                else:
-                    print("✅ email_otps table OK")
+                # Add missing columns if needed
+                for col, definition in [
+                    ('is_used', 'BOOLEAN DEFAULT FALSE'),
+                    ('purpose', "VARCHAR(50) DEFAULT 'email_verification'"),
+                ]:
+                    result = db.execute(text(f"""
+                        SELECT column_name FROM information_schema.columns
+                        WHERE table_name='email_otps' AND column_name='{col}';
+                    """))
+                    if not result.fetchone():
+                        db.execute(text(f"ALTER TABLE email_otps ADD COLUMN {col} {definition};"))
+                        db.commit()
+                        print(f"✅ {col} column added to email_otps")
+                print("✅ email_otps table OK")
             except Exception as e:
                 print(f"⚠️  Warning: Could not fix email_otps table: {e}")
                 db.rollback()

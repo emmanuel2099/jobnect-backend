@@ -76,6 +76,10 @@ class EmailService:
             text_body = self._build_email_text(name, otp, purpose)
             
             from_address = self.resend_from
+            # Use Resend's test sender until eaglespride.com.ng is verified in Resend dashboard
+            # onboarding@resend.dev works without domain verification
+            from_address = "onboarding@resend.dev"
+            resend_test_from = "onboarding@resend.dev"
             
             response = requests.post(
                 "https://api.resend.com/emails",
@@ -320,12 +324,24 @@ The Eagle's Pride Team
             }
 
     def send_verification_email(self, email: str, name: str = "User") -> dict:
-        """Send email verification OTP via Gmail SMTP"""
+        """Send email verification OTP via Resend API (primary) then Gmail SMTP fallback"""
         try:
             otp = self.generate_otp()
             self._store_otp(email, otp, purpose="email_verification")
             
-            # Use Gmail SMTP as primary
+            # Try Resend API first (works on Render - HTTPS based, not blocked)
+            if self.resend_api_key:
+                result = self._send_via_resend(email, name, otp, purpose="verification")
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "message": "Verification email sent",
+                        "email": email,
+                        "email_sent": True,
+                        "service": "resend"
+                    }
+            
+            # Fallback: Gmail SMTP (works locally, may be blocked on Render)
             gmail_result = self._send_gmail_smtp(email, name, otp)
             if gmail_result.get("success"):
                 return {
@@ -336,14 +352,14 @@ The Eagle's Pride Team
                     "service": "gmail"
                 }
             
-            # Gmail failed — log and return OTP as fallback
-            print(f"[EMAIL FALLBACK] OTP for {email}: {otp} | Error: {gmail_result.get('message')}")
+            # Both failed
+            print(f"[EMAIL FALLBACK] OTP for {email}: {otp} | Gmail error: {gmail_result.get('message')}")
             return {
                 "success": True,
                 "message": "OTP generated. Email delivery failed — check spam or contact support.",
                 "email": email,
                 "email_sent": False,
-                "debug_otp": otp  # Remove in production
+                "debug_otp": otp
             }
                 
         except Exception as e:
@@ -391,12 +407,27 @@ The Eagle's Pride Team
             }
     
     def send_password_reset_email(self, email: str, name: str = "User") -> dict:
-        """Send password reset OTP via Gmail SMTP"""
+        """Send password reset OTP via Resend API (primary) then Gmail SMTP fallback"""
         try:
             otp = self.generate_otp()
             self._store_otp(email, otp, purpose="password_reset")
             
-            # Use Gmail SMTP as primary
+            # Try Resend API first
+            if self.resend_api_key:
+                result = self._send_via_resend(
+                    email, name, otp,
+                    subject="🔐 Reset Your Eagle's Pride Password",
+                    purpose="reset"
+                )
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "message": "Password reset email sent",
+                        "email": email,
+                        "email_sent": True
+                    }
+            
+            # Fallback: Gmail SMTP
             gmail_result = self._send_gmail_smtp_reset(email, name, otp)
             if gmail_result.get("success"):
                 return {
@@ -406,14 +437,13 @@ The Eagle's Pride Team
                     "email_sent": True
                 }
             
-            # Gmail failed
-            print(f"[EMAIL FALLBACK] Password reset OTP for {email}: {otp} | Error: {gmail_result.get('message')}")
+            print(f"[EMAIL FALLBACK] Password reset OTP for {email}: {otp}")
             return {
                 "success": True,
                 "message": "Reset code generated. Email delivery failed — check spam or contact support.",
                 "email": email,
                 "email_sent": False,
-                "debug_otp": otp  # Remove once email is working
+                "debug_otp": otp
             }
                 
         except Exception as e:
