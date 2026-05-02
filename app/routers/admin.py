@@ -445,48 +445,70 @@ async def get_all_users(
     is_online: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
-    """Get all users with optional filters"""
-    query = db.query(User)
-    
-    if user_type:
-        query = query.filter(User.user_type == user_type)
-    
-    if is_online is not None:
-        query = query.filter(User.is_online == is_online)
-    
-    users = query.order_by(desc(User.created_at)).all()
-    
+    """Get all users from job_seekers and company_users tables"""
+    from app.models import JobSeeker, CompanyUser
+
+    all_users = []
+
+    # Get job seekers (unless filtering for companies only)
+    if not user_type or user_type in ('applicant', 'job_seeker', 'all'):
+        js_query = db.query(JobSeeker)
+        if is_online is not None:
+            js_query = js_query.filter(JobSeeker.is_online == is_online)
+        for u in js_query.order_by(desc(JobSeeker.created_at)).all():
+            all_users.append({
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": getattr(u, 'phone', ''),
+                "company": None,
+                "userType": "applicant",
+                "isActive": getattr(u, 'is_active', True),
+                "isOnline": getattr(u, 'is_online', False),
+                "lastLogin": u.last_login.isoformat() if getattr(u, 'last_login', None) else None,
+                "createdAt": u.created_at.isoformat() if getattr(u, 'created_at', None) else None,
+            })
+
+    # Get company users (unless filtering for job seekers only)
+    if not user_type or user_type in ('company', 'employer', 'all'):
+        cu_query = db.query(CompanyUser)
+        if is_online is not None:
+            cu_query = cu_query.filter(CompanyUser.is_online == is_online)
+        for u in cu_query.order_by(desc(CompanyUser.created_at)).all():
+            all_users.append({
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": getattr(u, 'phone', ''),
+                "company": getattr(u, 'company_name', ''),
+                "userType": "company",
+                "isActive": getattr(u, 'is_active', True),
+                "isOnline": getattr(u, 'is_online', False),
+                "lastLogin": u.last_login.isoformat() if getattr(u, 'last_login', None) else None,
+                "createdAt": u.created_at.isoformat() if getattr(u, 'created_at', None) else None,
+            })
+
+    # Sort by createdAt descending
+    all_users.sort(key=lambda x: x['createdAt'] or '', reverse=True)
+
     return {
         "success": True,
-        "message": f"Found {len(users)} users",
+        "message": f"Found {len(all_users)} users",
         "data": {
-            "total": len(users),
-            "users": [
-                {
-                    "id": user.id,
-                    "name": user.name,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "company": user.company,
-                    "userType": user.user_type,
-                    "isActive": user.is_active,
-                    "isOnline": user.is_online,
-                    "lastLogin": user.last_login.isoformat() if user.last_login else None,
-                    "createdAt": user.created_at.isoformat() if user.created_at else None
-                }
-                for user in users
-            ]
+            "total": len(all_users),
+            "users": all_users
         }
     }
 
 @router.get("/users/stats")
 async def get_user_stats(db: Session = Depends(get_db)):
-    """Get user statistics"""
-    total_users = db.query(User).count()
-    applicants = db.query(User).filter(User.user_type == "applicant").count()
-    companies = db.query(User).filter(User.user_type == "company").count()
-    online_users = db.query(User).filter(User.is_online == True).count()
-    active_users = db.query(User).filter(User.is_active == True).count()
+    """Get user statistics from actual tables"""
+    from app.models import JobSeeker, CompanyUser
+    applicants = db.query(JobSeeker).count()
+    companies = db.query(CompanyUser).count()
+    total_users = applicants + companies
+    online_users = db.query(JobSeeker).filter(JobSeeker.is_online == True).count() + \
+                   db.query(CompanyUser).filter(CompanyUser.is_online == True).count()
     
     return {
         "success": True,
@@ -496,7 +518,7 @@ async def get_user_stats(db: Session = Depends(get_db)):
             "applicants": applicants,
             "companies": companies,
             "onlineUsers": online_users,
-            "activeUsers": active_users
+            "activeUsers": total_users
         }
     }
 
