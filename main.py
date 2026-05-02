@@ -327,8 +327,14 @@ async def lifespan(app: FastAPI):
                             last_login TIMESTAMP
                         );
                     """))
+                    db2.execute(text("""
+                        CREATE TABLE IF NOT EXISTS admin_settings (
+                            key VARCHAR(100) PRIMARY KEY,
+                            value TEXT NOT NULL
+                        );
+                    """))
                     db2.commit()
-                    print("✅ admins table ready")
+                    print("✅ admins + admin_settings tables ready")
                 except Exception as e:
                     print(f"⚠️  admins table: {e}")
                     db2.rollback()

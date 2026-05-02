@@ -18,21 +18,42 @@ class AdminSignupRequest(BaseModel):
     name: str
     email: str
     password: str
-    signup_code: str  # secret code to prevent random signups
-
-class AdminLoginRequest(BaseModel):
-    email: str
-    password: str
-
-# Secret signup code — set via env var, fallback default
-ADMIN_SIGNUP_CODE = os.getenv("ADMIN_SIGNUP_CODE", "EaglesPride@Admin2025")
+    signup_code: str  # secret code — first admin sets it, subsequent admins must match it
 
 # ── Admin Signup ────────────────────────────────────────────────────────────
 @router.post("/signup")
 async def admin_signup(request: AdminSignupRequest, db: Session = Depends(get_db)):
-    """Register a new admin account (requires signup code)"""
-    if request.signup_code != ADMIN_SIGNUP_CODE:
-        raise HTTPException(status_code=403, detail="Invalid signup code")
+    """Register a new admin account.
+    - First admin: any signup_code is accepted and becomes the permanent code stored in DB.
+    - Subsequent admins: must provide the code set by the first admin.
+    """
+    from sqlalchemy import text as sqlt
+
+    # Get or set the signup code stored in DB
+    try:
+        row = db.execute(sqlt("SELECT value FROM admin_settings WHERE key = 'signup_code'")).fetchone()
+        stored_code = row[0] if row else None
+    except Exception:
+        stored_code = None
+
+    first_admin = db.query(Admin).count() == 0
+
+    if first_admin:
+        # First admin — store their chosen signup code
+        if not request.signup_code or len(request.signup_code) < 6:
+            raise HTTPException(status_code=400, detail="Signup code must be at least 6 characters")
+        try:
+            db.execute(sqlt("""
+                INSERT INTO admin_settings (key, value) VALUES ('signup_code', :code)
+                ON CONFLICT (key) DO UPDATE SET value = :code
+            """), {"code": request.signup_code})
+            db.commit()
+        except Exception:
+            db.rollback()
+    else:
+        # Subsequent admins — must match stored code
+        if not stored_code or request.signup_code != stored_code:
+            raise HTTPException(status_code=403, detail="Invalid signup code")
 
     existing = db.query(Admin).filter(Admin.email == request.email).first()
     if existing:
@@ -99,7 +120,38 @@ async def verify_admin_token(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-# ── Admin Post Job ────────────────────────────────────────────────────────────
+# ── Delete All Users ──────────────────────────────────────────────────────────
+@router.delete("/delete-all-users")
+async def delete_all_users(request: Request, db: Session = Depends(get_db)):
+    """Delete ALL job seekers and company users (irreversible — admin only)"""
+    from jose import JWTError, jwt
+    from app.models import JobSeeker, CompanyUser
+
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+    try:
+        token = auth.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("user_type") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    try:
+        js_count = db.query(JobSeeker).count()
+        cu_count = db.query(CompanyUser).count()
+        db.query(JobSeeker).delete(synchronize_session=False)
+        db.query(CompanyUser).delete(synchronize_session=False)
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Deleted {js_count} job seekers and {cu_count} company users",
+            "data": {"job_seekers_deleted": js_count, "companies_deleted": cu_count}
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
 class AdminPostJobRequest(BaseModel):
     title: str
     company_name: str
@@ -181,6 +233,13 @@ async def admin_post_job(request: Request, job: AdminPostJobRequest, db: Session
         "message": f"Job '{new_job.title}' posted successfully",
         "data": {"job_id": new_job.id, "title": new_job.title, "company": company.name}
     }
+
+# ── Signup Info (for UI hint) ─────────────────────────────────────────────
+@router.get("/signup-info")
+async def signup_info(db: Session = Depends(get_db)):
+    """Tell the UI if this is the first admin signup"""
+    is_first = db.query(Admin).count() == 0
+    return {"success": True, "is_first_admin": is_first}
 
 # ── Other Admin Schemas ──────────────────────────────────────────────────────
 class SendNotificationRequest(BaseModel):

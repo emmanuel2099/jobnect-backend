@@ -12,15 +12,37 @@ def create_notification(
     title: str,
     message: str,
     notification_type: str,
-    related_id: int = None
+    related_id: int = None,
+    user_type: str = None  # 'job_seeker', 'company', or None for legacy
 ):
-    """Create a new notification"""
+    """Create a new notification - supports all user types"""
+    from app.models import JobSeeker, CompanyUser
+
+    # Determine which column to use
+    job_seeker_id = None
+    company_user_id = None
+    legacy_user_id = None
+
+    if user_type == 'job_seeker':
+        job_seeker_id = user_id
+    elif user_type == 'company':
+        company_user_id = user_id
+    else:
+        # Auto-detect: check which table the user belongs to
+        if db.query(JobSeeker).filter(JobSeeker.id == user_id).first():
+            job_seeker_id = user_id
+        elif db.query(CompanyUser).filter(CompanyUser.id == user_id).first():
+            company_user_id = user_id
+        else:
+            legacy_user_id = user_id
+
     notification = Notification(
-        user_id=user_id,
+        user_id=legacy_user_id,
+        job_seeker_id=job_seeker_id,
+        company_user_id=company_user_id,
         title=title,
         message=message,
         notification_type=notification_type,
-        related_id=related_id,
         is_read=False,
         created_at=datetime.utcnow()
     )

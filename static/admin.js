@@ -54,6 +54,12 @@ function showSection(sectionName) {
         case 'notifications':
             loadNotifications();
             break;
+        case 'post-job':
+            initPostJobSection();
+            break;
+        case 'danger-zone':
+            // nothing to load
+            break;
     }
 }
 
@@ -184,7 +190,7 @@ async function loadJobs() {
     container.innerHTML = '<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading jobs...</p></div>';
     
     try {
-        const response = await fetch(`${API}/jobs/recent`);
+        const response = await fetch(`${API}/jobs/recent?limit=50`);
         const data = await response.json();
         
         if (data.success && data.data.jobs && data.data.jobs.length > 0) {
@@ -204,25 +210,32 @@ async function loadJobs() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.data.jobs.map(job => `
+                            ${data.data.jobs.map(job => {
+                                const isActive = job.isActive !== undefined ? job.isActive : job.is_active;
+                                const createdAt = job.createdAt || job.created_at;
+                                let dateStr = 'N/A';
+                                if (createdAt) {
+                                    try { dateStr = new Date(createdAt).toLocaleDateString(); } catch(e) {}
+                                }
+                                return `
                                 <tr>
                                     <td>${job.id}</td>
                                     <td><strong>${job.title}</strong></td>
                                     <td>${job.company?.name || 'N/A'}</td>
                                     <td>${job.location || 'N/A'}</td>
-                                    <td>${job.jobType?.name || 'N/A'}</td>
-                                    <td><span class="badge bg-${job.isActive ? 'success' : 'danger'}">${job.isActive ? 'Active' : 'Closed'}</span></td>
-                                    <td>${new Date(job.createdAt).toLocaleDateString()}</td>
+                                    <td>${job.jobType?.name || job.job_type || 'N/A'}</td>
+                                    <td><span class="badge bg-${isActive ? 'success' : 'danger'}">${isActive ? 'Active' : 'Closed'}</span></td>
+                                    <td>${dateStr}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-warning" onclick="toggleJobStatus(${job.id})">
+                                        <button class="btn btn-sm btn-warning" onclick="toggleJobStatus(${job.id})" title="Toggle Status">
                                             <i class="bi bi-toggle-on"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">
+                                        <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -1316,5 +1329,183 @@ async function submitPostJob() {
     } finally {
         btn.textContent = 'Post Job';
         btn.disabled = false;
+    }
+}
+
+
+// ── Post Job Section ──────────────────────────────────────────────────────
+
+async function initPostJobSection() {
+    // Load categories into the select
+    try {
+        const res = await fetch(`${API}/categories`);
+        const data = await res.json();
+        const sel = document.getElementById('pj_category');
+        if (sel) {
+            sel.innerHTML = '<option value="">Select category (optional)</option>';
+            const cats = data.data?.categories || data.data || [];
+            cats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
+        }
+    } catch (e) { /* categories optional */ }
+}
+
+async function submitPostJob() {
+    const title = document.getElementById('pj_title').value.trim();
+    const company = document.getElementById('pj_company').value.trim();
+    const description = document.getElementById('pj_description').value.trim();
+    const location = document.getElementById('pj_location').value.trim();
+
+    const errEl = document.getElementById('postJobError');
+    const sucEl = document.getElementById('postJobSuccess');
+    if (errEl) errEl.style.display = 'none';
+    if (sucEl) sucEl.style.display = 'none';
+
+    if (!title || !company || !description || !location) {
+        if (errEl) { errEl.textContent = 'Title, Company, Description and Location are required.'; errEl.style.display = 'block'; }
+        return;
+    }
+
+    const btn = document.getElementById('postJobBtn');
+    if (btn) { btn.textContent = 'Posting...'; btn.disabled = true; }
+
+    const token = localStorage.getItem('eaglesAdminToken');
+
+    const payload = {
+        title,
+        company_name: company,
+        description,
+        requirements: document.getElementById('pj_requirements')?.value.trim() || null,
+        responsibilities: document.getElementById('pj_responsibilities')?.value.trim() || null,
+        location,
+        job_type: document.getElementById('pj_job_type')?.value || null,
+        salary_min: parseFloat(document.getElementById('pj_salary_min')?.value) || null,
+        salary_max: parseFloat(document.getElementById('pj_salary_max')?.value) || null,
+        currency: document.getElementById('pj_currency')?.value || 'NGN',
+        vacancies: parseInt(document.getElementById('pj_vacancies')?.value) || 1,
+        deadline: document.getElementById('pj_deadline')?.value || null,
+        experience_required: document.getElementById('pj_experience')?.value.trim() || null,
+        category_id: document.getElementById('pj_category')?.value || null,
+    };
+
+    try {
+        const res = await fetch(`${API}/admin/post-job`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (sucEl) { sucEl.textContent = `✅ Job "${title}" posted successfully! It's now live for job seekers.`; sucEl.style.display = 'block'; }
+            // Clear form
+            ['pj_title','pj_company','pj_description','pj_requirements','pj_responsibilities',
+             'pj_location','pj_salary_min','pj_salary_max','pj_experience','pj_deadline'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const vac = document.getElementById('pj_vacancies');
+            if (vac) vac.value = '1';
+        } else {
+            if (errEl) { errEl.textContent = data.detail || data.message || 'Failed to post job.'; errEl.style.display = 'block'; }
+        }
+    } catch (e) {
+        if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
+    } finally {
+        if (btn) { btn.textContent = 'Post Job'; btn.disabled = false; }
+    }
+}
+
+// ── Delete All Users ──────────────────────────────────────────────────────
+
+async function confirmDeleteAllUsers() {
+    const confirmed = confirm('⚠️ WARNING: This will permanently delete ALL job seekers and company accounts.\n\nThis cannot be undone. Are you absolutely sure?');
+    if (!confirmed) return;
+
+    const confirmed2 = confirm('Last chance — type OK to confirm you want to delete ALL users.');
+    if (!confirmed2) return;
+
+    const btn = document.getElementById('deleteAllBtn');
+    const resultEl = document.getElementById('deleteAllResult');
+    if (btn) { btn.textContent = 'Deleting...'; btn.disabled = true; }
+
+    const token = localStorage.getItem('eaglesAdminToken');
+    try {
+        const res = await fetch(`${API}/admin/delete-all-users`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            if (resultEl) {
+                resultEl.style.background = '#f0fff4';
+                resultEl.style.border = '1px solid #b2dfdb';
+                resultEl.style.color = '#1b5e20';
+                resultEl.textContent = data.message;
+                resultEl.style.display = 'block';
+            }
+        } else {
+            if (resultEl) {
+                resultEl.style.background = '#fff0f0';
+                resultEl.style.border = '1px solid #ffcccc';
+                resultEl.style.color = '#c0392b';
+                resultEl.textContent = data.detail || 'Delete failed.';
+                resultEl.style.display = 'block';
+            }
+        }
+    } catch (e) {
+        if (resultEl) { resultEl.textContent = 'Connection error.'; resultEl.style.display = 'block'; }
+    } finally {
+        if (btn) { btn.textContent = 'Delete All Users'; btn.disabled = false; }
+    }
+}
+
+// ── Intro Screen ──────────────────────────────────────────────────────────
+
+async function enterDashboard() {
+    // Load quick stats for intro
+    try {
+        const res = await fetch(`${API}/admin/stats`);
+        const data = await res.json();
+        if (data.success) {
+            const s = data.data;
+            const u = document.getElementById('introUsers');
+            const j = document.getElementById('introJobs');
+            const a = document.getElementById('introApps');
+            if (u) u.textContent = (s.total_job_seekers || 0) + (s.total_companies || 0);
+            if (j) j.textContent = s.total_jobs || 0;
+            if (a) a.textContent = s.total_applications || 0;
+        }
+    } catch (e) { /* stats optional */ }
+
+    document.getElementById('introScreen').style.opacity = '0';
+    document.getElementById('introScreen').style.transition = 'opacity 0.4s ease';
+    setTimeout(() => {
+        document.getElementById('introScreen').style.display = 'none';
+        document.getElementById('loginOverlay').style.display = 'flex';
+    }, 400);
+}
+
+// ── Signup Code Hint ──────────────────────────────────────────────────────
+
+async function loadSignupCodeHint() {
+    const hintEl = document.getElementById('signupCodeHint');
+    if (!hintEl) return;
+    try {
+        const res = await fetch(`${API}/admin/signup-info`);
+        const data = await res.json();
+        if (data.is_first_admin) {
+            hintEl.textContent = '🎉 You are the first admin! Choose your own signup code — others will need it to register.';
+            hintEl.style.color = '#1b5e20';
+        } else {
+            hintEl.textContent = 'Enter the signup code set by the first admin.';
+            hintEl.style.color = '#888';
+        }
+    } catch (e) {
+        hintEl.textContent = 'Enter or create your admin signup code.';
     }
 }
