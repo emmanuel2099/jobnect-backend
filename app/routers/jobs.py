@@ -33,7 +33,7 @@ async def get_recent_jobs(limit: int = Query(10, ge=1, le=50), db: Session = Dep
             "responsibilities": job.responsibilities,
             "salary_min": job.salary_min,
             "salary_max": job.salary_max,
-            "currency": job.currency if hasattr(job, 'currency') else 'USD',
+            "currency": job.currency if hasattr(job, 'currency') else 'NGN',
             "location": job.location,
             "deadline": str(job.deadline) if job.deadline else None,
             "vacancies": job.vacancies,
@@ -89,7 +89,7 @@ async def get_popular_jobs(limit: int = Query(10, ge=1, le=50), db: Session = De
             "description": job.description,
             "salary_min": job.salary_min,
             "salary_max": job.salary_max,
-            "currency": job.currency if hasattr(job, 'currency') else 'USD',
+            "currency": job.currency if hasattr(job, 'currency') else 'NGN',
             "location": job.location,
             "deadline": str(job.deadline) if job.deadline else None,
             "company": {
@@ -158,7 +158,7 @@ async def filter_jobs(
             "description": job.description,
             "salary_min": job.salary_min,
             "salary_max": job.salary_max,
-            "currency": job.currency if hasattr(job, 'currency') else 'USD',
+            "currency": job.currency if hasattr(job, 'currency') else 'NGN',
             "location": job.location,
             "deadline": str(job.deadline) if job.deadline else None,
             "company": {
@@ -208,7 +208,7 @@ async def get_job_details(job_id: int, db: Session = Depends(get_db)):
                 "responsibilities": job.responsibilities,
                 "salary_min": job.salary_min,
                 "salary_max": job.salary_max,
-                "currency": job.currency if hasattr(job, 'currency') else 'USD',
+                "currency": job.currency if hasattr(job, 'currency') else 'NGN',
                 "location": job.location,
                 "deadline": str(job.deadline) if job.deadline else None,
                 "vacancies": job.vacancies,
@@ -269,7 +269,7 @@ async def get_company_jobs(current_user: User = Depends(get_current_user), db: S
             "description": job.description,
             "salary_min": job.salary_min,
             "salary_max": job.salary_max,
-            "currency": job.currency if hasattr(job, 'currency') else 'USD',
+            "currency": job.currency if hasattr(job, 'currency') else 'NGN',
             "location": job.location,
             "deadline": str(job.deadline) if job.deadline else None,
             "vacancies": job.vacancies,
@@ -373,7 +373,7 @@ async def create_job(data: JobCreate, current_user: User = Depends(get_current_u
             job_level_id=data.job_level_id,
             salary_min=data.salary_min,
             salary_max=data.salary_max,
-            currency=data.currency or 'USD',  # Save currency
+            currency=data.currency or 'NGN',  # Save currency
             location=data.location,
             city=data.city,  # Use free text city field
             deadline=deadline_date,

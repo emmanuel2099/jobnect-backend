@@ -246,7 +246,7 @@ async def get_bookmarked_jobs(current_user: User = Depends(get_current_user), db
                     "description": job.description,
                     "salary_min": job.salary_min,
                     "salary_max": job.salary_max,
-                    "currency": job.currency if hasattr(job, 'currency') else "USD",
+                    "currency": job.currency if hasattr(job, 'currency') else "NGN",
                     "location": job.location,
                     "city": job.city if hasattr(job, 'city') else None,
                     "deadline": str(job.deadline) if job.deadline else None,

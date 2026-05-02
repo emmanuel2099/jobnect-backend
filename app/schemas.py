@@ -261,7 +261,7 @@ class JobCreate(BaseModel):
     salary_max: Optional[float]
     location: Optional[str]
     city: Optional[str]  # Changed from city_id to city (free text)
-    currency: Optional[str] = 'USD'  # Currency: USD or NGN
+    currency: Optional[str] = 'NGN'  # Currency: USD or NGN
     deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int] = 1
     experience_required: Optional[str]
@@ -279,7 +279,7 @@ class JobUpdate(BaseModel):
     salary_max: Optional[float]
     location: Optional[str]
     city: Optional[str]  # Changed from city_id to city (free text)
-    currency: Optional[str] = 'USD'  # Currency: USD or NGN
+    currency: Optional[str] = 'NGN'  # Currency: USD or NGN
     deadline: Optional[str]  # Accept string and convert to date in backend
     vacancies: Optional[int]
     experience_required: Optional[str]

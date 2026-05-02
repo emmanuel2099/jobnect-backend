@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
                 """))
                 if not result.fetchone():
                     print("🔄 Adding currency column to jobs table...")
-                    db.execute(text("ALTER TABLE jobs ADD COLUMN currency VARCHAR(10) DEFAULT 'USD';"))
+                    db.execute(text("ALTER TABLE jobs ADD COLUMN currency VARCHAR(10) DEFAULT 'NGN';"))
                     db.commit()
                     print("✅ Currency column added successfully")
                 else:
