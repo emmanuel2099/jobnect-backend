@@ -29,16 +29,17 @@
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%);
             color: white;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+            border-right: 1px solid rgba(255,255,255,0.05);
         }
         
         .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
         
         .sidebar-header h4 {
@@ -48,37 +49,41 @@
         }
         
         .nav-menu {
-            padding: 15px 0;
+            padding: 8px 0 20px;
         }
         
         .nav-item {
-            margin: 5px 10px;
+            margin: 2px 10px;
         }
         
         .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 20px;
-            border-radius: 8px;
+            color: rgba(255,255,255,0.55);
+            padding: 10px 14px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            transition: all 0.3s;
+            gap: 11px;
+            transition: all 0.2s;
             text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 500;
         }
         
         .nav-link:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.9);
         }
         
         .nav-link.active {
-            background: var(--primary-color);
+            background: linear-gradient(135deg, rgba(171,53,0,0.8), rgba(255,107,53,0.6));
             color: white;
+            box-shadow: 0 4px 12px rgba(171,53,0,0.3);
         }
         
         .nav-link i {
-            font-size: 20px;
-            width: 24px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
         }
         
         /* Main Content */
@@ -203,72 +208,146 @@
     <!-- ── INTRO SCREEN ───────────────────────────────────────────── -->
     <div id="introScreen" style="
         display:flex; position:fixed; inset:0; z-index:10000;
-        background:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);
+        background:#0a0a0f;
         align-items:center; justify-content:center; flex-direction:column;
-        animation: fadeInIntro 0.5s ease;">
+        overflow:hidden;">
+      
+      <!-- Animated background particles -->
       <style>
-        @keyframes fadeInIntro { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
-        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-        @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-        .intro-stat { text-align:center; padding:0 24px; }
-        .intro-stat h3 { color:#ff6b35; font-size:28px; font-weight:800; margin:0; }
-        .intro-stat p { color:rgba(255,255,255,0.6); font-size:12px; margin:4px 0 0; }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes glow { 0%,100%{box-shadow:0 0 40px rgba(171,53,0,0.4)} 50%{box-shadow:0 0 80px rgba(255,107,53,0.7)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        @keyframes orbit { from{transform:rotate(0deg) translateX(120px) rotate(0deg)} to{transform:rotate(360deg) translateX(120px) rotate(-360deg)} }
+        @keyframes orbitReverse { from{transform:rotate(0deg) translateX(80px) rotate(0deg)} to{transform:rotate(-360deg) translateX(80px) rotate(360deg)} }
+        @keyframes countUp { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
+        
+        .intro-bg-circle {
+          position:absolute; border-radius:50%; filter:blur(80px); opacity:0.15; pointer-events:none;
+        }
+        .intro-stat-card {
+          background:rgba(255,255,255,0.04);
+          border:1px solid rgba(255,255,255,0.08);
+          border-radius:16px; padding:20px 28px; text-align:center;
+          backdrop-filter:blur(10px);
+          transition:all 0.3s;
+        }
+        .intro-stat-card:hover {
+          background:rgba(171,53,0,0.15);
+          border-color:rgba(171,53,0,0.4);
+          transform:translateY(-4px);
+        }
+        .intro-stat-card h3 { color:#ff6b35; font-size:32px; font-weight:800; margin:0; letter-spacing:-1px; }
+        .intro-stat-card p { color:rgba(255,255,255,0.5); font-size:11px; margin:4px 0 0; text-transform:uppercase; letter-spacing:1px; }
+        
+        .intro-feature {
+          display:flex; align-items:center; gap:10px;
+          background:rgba(255,255,255,0.04);
+          border:1px solid rgba(255,255,255,0.07);
+          border-radius:12px; padding:12px 18px;
+          transition:all 0.3s;
+        }
+        .intro-feature:hover { background:rgba(171,53,0,0.12); border-color:rgba(171,53,0,0.3); }
+        .intro-feature i { font-size:18px; color:#ff6b35; }
+        .intro-feature span { color:rgba(255,255,255,0.75); font-size:13px; font-weight:500; }
+        
+        .enter-btn {
+          padding:16px 56px;
+          background:linear-gradient(135deg,#ab3500,#ff6b35);
+          color:#fff; border:none; border-radius:50px;
+          font-size:16px; font-weight:700; cursor:pointer;
+          box-shadow:0 8px 32px rgba(171,53,0,0.5);
+          transition:all 0.3s; letter-spacing:0.5px;
+          position:relative; overflow:hidden;
+        }
+        .enter-btn::before {
+          content:''; position:absolute; inset:0;
+          background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+          transform:translateX(-100%); transition:transform 0.5s;
+        }
+        .enter-btn:hover::before { transform:translateX(100%); }
+        .enter-btn:hover { transform:translateY(-3px); box-shadow:0 16px 48px rgba(171,53,0,0.7); }
+        .enter-btn:active { transform:translateY(0); }
+        
+        .shimmer-text {
+          background:linear-gradient(90deg,#ff6b35,#fff,#ff6b35);
+          background-size:200% auto;
+          -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+          animation:shimmer 3s linear infinite;
+        }
       </style>
-
-      <!-- Logo & Brand -->
-      <div style="text-align:center; animation: slideUp 0.6s ease 0.2s both;">
-        <div style="width:100px;height:100px;background:linear-gradient(135deg,#ab3500,#ff6b35);border-radius:28px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 20px 60px rgba(171,53,0,0.5);animation:pulse 2s infinite;">
-          <span style="font-size:52px;">🦅</span>
+      
+      <!-- Background glow circles -->
+      <div class="intro-bg-circle" style="width:600px;height:600px;background:#ab3500;top:-200px;right:-200px;"></div>
+      <div class="intro-bg-circle" style="width:400px;height:400px;background:#1a1a6e;bottom:-100px;left:-100px;"></div>
+      <div class="intro-bg-circle" style="width:300px;height:300px;background:#ff6b35;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.05;"></div>
+      
+      <!-- Grid pattern overlay -->
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;"></div>
+      
+      <!-- Main content -->
+      <div style="position:relative;z-index:1;text-align:center;max-width:700px;padding:0 24px;">
+        
+        <!-- Logo -->
+        <div style="animation:fadeInUp 0.6s ease both;">
+          <div style="position:relative;display:inline-block;margin-bottom:24px;">
+            <div style="width:110px;height:110px;background:linear-gradient(135deg,#ab3500,#ff6b35);border-radius:32px;display:inline-flex;align-items:center;justify-content:center;animation:glow 3s ease-in-out infinite,float 4s ease-in-out infinite;box-shadow:0 20px 60px rgba(171,53,0,0.5);">
+              <span style="font-size:56px;">🦅</span>
+            </div>
+            <!-- Orbit dot -->
+            <div style="position:absolute;top:50%;left:50%;width:10px;height:10px;background:#ff6b35;border-radius:50%;animation:orbit 4s linear infinite;margin:-5px;"></div>
+            <div style="position:absolute;top:50%;left:50%;width:6px;height:6px;background:rgba(255,255,255,0.6);border-radius:50%;animation:orbitReverse 3s linear infinite;margin:-3px;"></div>
+          </div>
         </div>
-        <h1 style="color:#fff;font-size:36px;font-weight:800;margin:0;letter-spacing:-1px;">Eagle's Pride</h1>
-        <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:6px 0 0;letter-spacing:3px;text-transform:uppercase;">Admin Control Center</p>
-      </div>
-
-      <!-- Stats row -->
-      <div style="display:flex;gap:0;margin:48px 0;border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;animation: slideUp 0.6s ease 0.4s both;">
-        <div class="intro-stat" style="padding:20px 32px;border-right:1px solid rgba(255,255,255,0.1);">
-          <h3 id="introUsers">—</h3><p>Total Users</p>
+        
+        <!-- Title -->
+        <div style="animation:fadeInUp 0.6s ease 0.15s both;">
+          <h1 style="color:#fff;font-size:48px;font-weight:900;margin:0;letter-spacing:-2px;line-height:1;">
+            Eagle's <span class="shimmer-text">Pride</span>
+          </h1>
+          <p style="color:rgba(255,255,255,0.35);font-size:12px;margin:8px 0 0;letter-spacing:5px;text-transform:uppercase;font-weight:500;">
+            Admin Control Center
+          </p>
         </div>
-        <div class="intro-stat" style="padding:20px 32px;border-right:1px solid rgba(255,255,255,0.1);">
-          <h3 id="introJobs">—</h3><p>Active Jobs</p>
+        
+        <!-- Divider -->
+        <div style="animation:fadeInUp 0.6s ease 0.25s both;margin:28px 0;">
+          <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(171,53,0,0.6),transparent);"></div>
         </div>
-        <div class="intro-stat" style="padding:20px 32px;">
-          <h3 id="introApps">—</h3><p>Applications</p>
+        
+        <!-- Stats -->
+        <div style="display:flex;gap:12px;justify-content:center;margin-bottom:28px;animation:fadeInUp 0.6s ease 0.3s both;">
+          <div class="intro-stat-card">
+            <h3 id="introUsers">—</h3>
+            <p>Total Users</p>
+          </div>
+          <div class="intro-stat-card">
+            <h3 id="introJobs">—</h3>
+            <p>Active Jobs</p>
+          </div>
+          <div class="intro-stat-card">
+            <h3 id="introApps">—</h3>
+            <p>Applications</p>
+          </div>
         </div>
-      </div>
-
-      <!-- Features -->
-      <div style="display:flex;gap:16px;margin-bottom:48px;animation: slideUp 0.6s ease 0.5s both;">
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;text-align:center;min-width:120px;">
-          <i class="bi bi-people-fill" style="font-size:24px;color:#ff6b35;"></i>
-          <p style="color:#fff;font-size:12px;margin:8px 0 0;font-weight:600;">User Management</p>
+        
+        <!-- Features row -->
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:36px;animation:fadeInUp 0.6s ease 0.4s both;">
+          <div class="intro-feature"><i class="bi bi-people-fill"></i><span>User Management</span></div>
+          <div class="intro-feature"><i class="bi bi-briefcase-fill"></i><span>Job Posting</span></div>
+          <div class="intro-feature"><i class="bi bi-graph-up-arrow"></i><span>Analytics</span></div>
+          <div class="intro-feature"><i class="bi bi-shield-check-fill"></i><span>Secure Access</span></div>
         </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;text-align:center;min-width:120px;">
-          <i class="bi bi-briefcase-fill" style="font-size:24px;color:#ff6b35;"></i>
-          <p style="color:#fff;font-size:12px;margin:8px 0 0;font-weight:600;">Job Posting</p>
+        
+        <!-- CTA Button -->
+        <div style="animation:fadeInUp 0.6s ease 0.5s both;">
+          <button onclick="enterDashboard()" class="enter-btn">
+            Enter Dashboard &nbsp;<i class="bi bi-arrow-right-circle-fill"></i>
+          </button>
+          <p style="color:rgba(255,255,255,0.2);font-size:11px;margin-top:16px;letter-spacing:1px;">
+            SECURED WITH JWT AUTHENTICATION
+          </p>
         </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;text-align:center;min-width:120px;">
-          <i class="bi bi-graph-up-arrow" style="font-size:24px;color:#ff6b35;"></i>
-          <p style="color:#fff;font-size:12px;margin:8px 0 0;font-weight:600;">Analytics</p>
-        </div>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;text-align:center;min-width:120px;">
-          <i class="bi bi-bell-fill" style="font-size:24px;color:#ff6b35;"></i>
-          <p style="color:#fff;font-size:12px;margin:8px 0 0;font-weight:600;">Notifications</p>
-        </div>
-      </div>
-
-      <!-- CTA -->
-      <div style="animation: slideUp 0.6s ease 0.6s both;">
-        <button onclick="enterDashboard()" style="
-          padding:16px 48px;background:linear-gradient(135deg,#ab3500,#ff6b35);
-          color:#fff;border:none;border-radius:50px;font-size:16px;font-weight:700;
-          cursor:pointer;box-shadow:0 8px 32px rgba(171,53,0,0.4);
-          transition:transform 0.2s,box-shadow 0.2s;"
-          onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 40px rgba(171,53,0,0.6)'"
-          onmouseout="this.style.transform='';this.style.boxShadow='0 8px 32px rgba(171,53,0,0.4)'">
-          Enter Dashboard &nbsp;<i class="bi bi-arrow-right-circle-fill"></i>
-        </button>
-        <p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;margin-top:16px;">Secure Admin Access</p>
       </div>
     </div>
 
@@ -377,29 +456,32 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <div class="d-flex align-items-center mb-2">
-                <div class="logo-container me-3">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #D84315 0%, #FF5722 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(216, 67, 21, 0.3);">
-                        <span style="font-size: 24px; color: white;">🦅</span>
-                    </div>
+            <div class="d-flex align-items-center mb-3">
+                <div style="width:42px;height:42px;background:linear-gradient(135deg,#ab3500,#ff6b35);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;box-shadow:0 4px 12px rgba(171,53,0,0.4);">
+                    <span style="font-size:22px;">🦅</span>
                 </div>
                 <div>
-                    <h4 class="mb-0" style="color: #FF5722; font-weight: 700;">Eagle's Pride</h4>
-                    <small class="text-white-50">Admin Dashboard</small>
+                    <div style="color:#fff;font-weight:700;font-size:15px;line-height:1.2;">Eagle's Pride</div>
+                    <div style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;">Admin Panel</div>
                 </div>
             </div>
-            <button onclick="adminLogout()" style="width:100%;margin-top:8px;padding:8px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:center;" onmouseover="this.style.background='rgba(171,53,0,0.6)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-              <i class="bi bi-box-arrow-right"></i> Logout
+            <button onclick="adminLogout()" style="width:100%;padding:9px 14px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;justify-content:center;transition:all 0.2s;font-weight:500;" onmouseover="this.style.background='rgba(171,53,0,0.4)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.7)'">
+              <i class="bi bi-box-arrow-right"></i> Sign Out
             </button>
         </div>
         
         <nav class="nav-menu">
+            <!-- Overview -->
+            <div style="padding:8px 16px 4px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:600;">Overview</div>
             <div class="nav-item">
                 <a href="#" class="nav-link active" data-section="dashboard" onclick="showSection('dashboard'); return false;">
-                    <i class="bi bi-speedometer2"></i>
+                    <i class="bi bi-grid-1x2-fill"></i>
                     <span>Dashboard</span>
                 </a>
             </div>
+            
+            <!-- People -->
+            <div style="padding:12px 16px 4px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:600;">People</div>
             <div class="nav-item">
                 <a href="#" class="nav-link" data-section="users" onclick="showSection('users'); return false;">
                     <i class="bi bi-people-fill"></i>
@@ -413,13 +495,22 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="#" class="nav-link" data-section="profiles" onclick="showSection('profiles'); return false;">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span>User Profiles</span>
+                </a>
+            </div>
+            
+            <!-- Jobs -->
+            <div style="padding:12px 16px 4px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:600;">Jobs</div>
+            <div class="nav-item">
                 <a href="#" class="nav-link" data-section="jobs" onclick="showSection('jobs'); return false;">
                     <i class="bi bi-briefcase-fill"></i>
-                    <span>Jobs</span>
+                    <span>Job Management</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" data-section="post-job" onclick="showSection('post-job'); return false;" style="color:#4caf50;">
+                <a href="#" class="nav-link" data-section="post-job" onclick="showSection('post-job'); return false;" style="color:#4ade80;">
                     <i class="bi bi-plus-circle-fill"></i>
                     <span>Post New Job</span>
                 </a>
@@ -428,18 +519,6 @@
                 <a href="#" class="nav-link" data-section="applications" onclick="showSection('applications'); return false;">
                     <i class="bi bi-file-earmark-text-fill"></i>
                     <span>Applications</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" data-section="payments" onclick="showSection('payments'); return false;">
-                    <i class="bi bi-credit-card-fill"></i>
-                    <span>Payments & Revenue</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" data-section="chat" onclick="showSection('chat'); return false;">
-                    <i class="bi bi-chat-dots-fill"></i>
-                    <span>Chat</span>
                 </a>
             </div>
             <div class="nav-item">
@@ -454,10 +533,13 @@
                     <span>Saved Jobs</span>
                 </a>
             </div>
+            
+            <!-- Finance & Comms -->
+            <div style="padding:12px 16px 4px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:600;">Finance & Comms</div>
             <div class="nav-item">
-                <a href="#" class="nav-link" data-section="profiles" onclick="showSection('profiles'); return false;">
-                    <i class="bi bi-person-badge-fill"></i>
-                    <span>User Profiles</span>
+                <a href="#" class="nav-link" data-section="payments" onclick="showSection('payments'); return false;">
+                    <i class="bi bi-credit-card-fill"></i>
+                    <span>Payments & Revenue</span>
                 </a>
             </div>
             <div class="nav-item">
@@ -467,7 +549,16 @@
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" data-section="danger-zone" onclick="showSection('danger-zone'); return false;" style="color:#ff6b6b;">
+                <a href="#" class="nav-link" data-section="chat" onclick="showSection('chat'); return false;">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    <span>Chat Monitor</span>
+                </a>
+            </div>
+            
+            <!-- Danger -->
+            <div style="padding:12px 16px 4px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:600;">Danger Zone</div>
+            <div class="nav-item">
+                <a href="#" class="nav-link" data-section="danger-zone" onclick="showSection('danger-zone'); return false;" style="color:#f87171;">
                     <i class="bi bi-trash3-fill"></i>
                     <span>Delete All Users</span>
                 </a>
@@ -1273,31 +1364,67 @@
     async function loadPayments() {
       var c=document.getElementById('paymentsTable'); if(!c) return;
       c.innerHTML='<div class="loading"><div class="spinner-border text-primary"></div><p class="mt-3">Loading...</p></div>';
+      
+      // Clear the chart spinners immediately
+      var pmEl = document.getElementById('paymentMethodsChart');
+      var rtEl = document.getElementById('revenueTrendChart');
+      
       try {
         const r=await fetch(API+'/admin/payments',{headers:authHeaders()});
         if(!r.ok) throw new Error('Failed: '+r.status);
         const d=await r.json();
-        // Handle both response structures
         const summary = d.data?.summary || d.summary || d.data || {};
         const payments = d.data?.payments || d.payments || [];
+        const paymentMethods = d.data?.paymentMethods || d.data?.payment_methods || {};
+        const dailyRevenue = d.data?.dailyRevenue || d.data?.daily_revenue || {};
         
-        // Update analytics cards - handle both camelCase and snake_case
+        // Update analytics cards
         setEl('totalRevenue','₦'+(summary.totalRevenue||summary.total_revenue||0).toLocaleString());
         setEl('monthlyRevenue','₦'+(summary.monthlyRevenue||summary.monthly_revenue||0).toLocaleString());
         setEl('weeklyRevenue','₦'+(summary.weeklyRevenue||summary.weekly_revenue||0).toLocaleString());
-        setEl('avgPayment','₦'+(summary.averagePayment||summary.average_payment||0).toLocaleString());
-        
-        // Update status counts
+        setEl('averagePayment','₦'+(summary.averagePayment||summary.average_payment||0).toLocaleString());
         setEl('completedPayments', summary.completedPayments||summary.completed_payments||0);
         setEl('pendingPayments', summary.pendingPayments||summary.pending_payments||0);
         setEl('failedPayments', summary.failedPayments||summary.failed_payments||0);
         
-        // Clear loading spinners for payment methods and revenue trend
-        var pmEl = document.getElementById('paymentMethodsContent');
-        if(pmEl) pmEl.innerHTML = '<p class="text-muted text-center py-3">No payment method data yet</p>';
-        var rtEl = document.getElementById('revenueTrendContent');
-        if(rtEl) rtEl.innerHTML = '<p class="text-muted text-center py-3">No revenue trend data yet</p>';
+        // Payment Methods chart
+        if(pmEl) {
+          var pmKeys = Object.keys(paymentMethods);
+          if(pmKeys.length === 0) {
+            pmEl.innerHTML = '<div style="text-align:center;padding:30px;color:#999;"><i class="bi bi-pie-chart" style="font-size:40px;"></i><p class="mt-2">No payment method data yet</p></div>';
+          } else {
+            var pmRows = pmKeys.map(function(k){
+              var v = paymentMethods[k];
+              return '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;">'+
+                '<span style="font-weight:500;">'+escHtml(k)+'</span>'+
+                '<span class="badge bg-primary">₦'+Number(v||0).toLocaleString()+'</span></div>';
+            }).join('');
+            pmEl.innerHTML = pmRows;
+          }
+        }
         
+        // Revenue Trend chart (simple bar-like display)
+        if(rtEl) {
+          var rtKeys = Object.keys(dailyRevenue);
+          if(rtKeys.length === 0) {
+            rtEl.innerHTML = '<div style="text-align:center;padding:30px;color:#999;"><i class="bi bi-bar-chart" style="font-size:40px;"></i><p class="mt-2">No revenue trend data yet</p></div>';
+          } else {
+            var maxVal = Math.max(...rtKeys.map(k => dailyRevenue[k] || 0)) || 1;
+            var rtRows = rtKeys.map(function(k){
+              var v = dailyRevenue[k] || 0;
+              var pct = Math.round((v/maxVal)*100);
+              var date = new Date(k).toLocaleDateString('en-GB',{month:'short',day:'numeric'});
+              return '<div style="margin-bottom:8px;">'+
+                '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">'+
+                '<span>'+date+'</span><span>₦'+Number(v).toLocaleString()+'</span></div>'+
+                '<div style="background:#f0f0f0;border-radius:4px;height:8px;">'+
+                '<div style="background:linear-gradient(90deg,#ab3500,#ff6b35);width:'+pct+'%;height:100%;border-radius:4px;"></div></div></div>';
+            }).join('');
+            rtEl.innerHTML = rtRows;
+          }
+        }
+        
+        // Recent payments table
         if(!Array.isArray(payments)||payments.length===0){
           c.innerHTML='<div class="empty-state"><i class="bi bi-credit-card"></i><p>No payments found</p></div>';
           return;
@@ -1308,7 +1435,11 @@
           return '<tr><td>'+p.id+'</td><td>'+escHtml(p.user_name||p.email||'')+'</td><td>₦'+Number(p.amount||0).toLocaleString()+'</td><td>'+escHtml(p.plan_name||p.description||'')+'</td><td>'+sb+'</td><td>'+ca+'</td></tr>';
         }).join('');
         c.innerHTML='<div class="table-responsive"><table class="table table-hover"><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Plan</th><th>Status</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-      } catch(e){c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';}
+      } catch(e){
+        c.innerHTML='<div class="alert alert-danger">Error: '+escHtml(e.message)+'</div>';
+        if(pmEl) pmEl.innerHTML='<div class="alert alert-warning">Could not load payment methods</div>';
+        if(rtEl) rtEl.innerHTML='<div class="alert alert-warning">Could not load revenue trend</div>';
+      }
     }
     function refreshPayments() { loadPayments(); }
 
